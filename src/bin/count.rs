@@ -13,17 +13,21 @@ use ratatui::{
 };
 // ANCHOR_END: imports
 
+// 这里我们创建了APP, 延迟传播了App::run() 返回的结果, 确保在终端恢复之后才程序退出之后将所有的 error 结果返回
 fn main() -> io::Result<()> {
     ratatui::run(|terminal| App::default().run(terminal))
 }
 
 // ANCHOR: app
+// 这里创建一个APP, 然后对应的, 确定一个 u8 用来计数, 并且还有一个退出的标志: bool
+// 还有这里的: Default trait 使用来设置这个 struct 的默认值的, Rust 并不会像 Java 一样自动设置默认值.
 #[derive(Debug, Default)]
 pub struct App {
     counter: u8,
     exit: bool,
 }
 // ANCHOR_END: app
+
 
 // ANCHOR: impl App
 impl App {
