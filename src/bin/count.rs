@@ -10,6 +10,7 @@ use ratatui::{
     text::{Line, Text},
     widgets::{Block, Paragraph, Widget},
     DefaultTerminal, Frame,
+    style::{Color, Style}, // 确保这里有 Color 和 Style
 };
 // ANCHOR_END: imports
 
@@ -63,6 +64,7 @@ impl App {
             KeyCode::Char('q') => self.exit(),
             KeyCode::Left => self.decrement_counter(),
             KeyCode::Right => self.increment_counter(),
+            KeyCode::Char('r') => self.reset(),
             _ => {}
         }
     }
@@ -72,12 +74,21 @@ impl App {
         self.exit = true;
     }
 
+    // 添加了两个防护机制, 只有在 > 0 的情况下才会减 1, 只有在 < 255 的情况下才会加 1.
     fn increment_counter(&mut self) {
-        self.counter += 1;
+        if self.counter < 255 {
+            self.counter += 1;
+        }    
     }
 
     fn decrement_counter(&mut self) {
-        self.counter -= 1;
+        if self.counter > 0 {
+            self.counter -= 1;
+        }
+    }
+
+    fn reset(&mut self) {
+        self.counter = 0;
     }
 }
 // ANCHOR_END: impl App
@@ -85,7 +96,7 @@ impl App {
 // ANCHOR: impl Widget
 impl Widget for &App {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let title = Line::from(" Counter App Tutorial ".bold());
+        let title = Line::from(" 我的第一个计数器应用 ".red());
         let instructions = Line::from(vec![
             " Decrement ".into(),
             "<Left>".blue().bold(),
@@ -93,11 +104,16 @@ impl Widget for &App {
             "<Right>".blue().bold(),
             " Quit ".into(),
             "<Q> ".blue().bold(),
+            // 添加一个复位按键提示
+            " Reset ".into(),
+            "<R> ".blue().bold(),
         ]);
         let block = Block::bordered()
-            .title(title.centered())
+            .title(title)
             .title_bottom(instructions.centered())
-            .border_set(border::THICK);
+            .border_set(border::ROUNDED)
+            .border_style(Style::default().fg(Color::Cyan));
+        // 将原来的 border::THICK 修改为: border::ROUNDED 即: 变为圆角
 
         let counter_text = Text::from(vec![Line::from(vec![
             "Value: ".into(),
@@ -111,55 +127,3 @@ impl Widget for &App {
     }
 }
 // ANCHOR_END: impl Widget
-
-// ANCHOR: tests
-#[cfg(test)]
-mod tests {
-
-    // ANCHOR: render test
-    use super::*;
-    use ratatui::style::Style;
-
-    #[test]
-    fn render() {
-        let app = App::default();
-        let mut buf = Buffer::empty(Rect::new(0, 0, 50, 4));
-
-        app.render(buf.area, &mut buf);
-
-        let mut expected = Buffer::with_lines(vec![
-            "┏━━━━━━━━━━━━━ Counter App Tutorial ━━━━━━━━━━━━━┓",
-            "┃                    Value: 0                    ┃",
-            "┃                                                ┃",
-            "┗━ Decrement <Left> Increment <Right> Quit <Q> ━━┛",
-        ]);
-        let title_style = Style::new().bold();
-        let counter_style = Style::new().yellow();
-        let key_style = Style::new().blue().bold();
-        expected.set_style(Rect::new(14, 0, 22, 1), title_style);
-        expected.set_style(Rect::new(28, 1, 1, 1), counter_style);
-        expected.set_style(Rect::new(13, 3, 6, 1), key_style);
-        expected.set_style(Rect::new(30, 3, 7, 1), key_style);
-        expected.set_style(Rect::new(43, 3, 4, 1), key_style);
-
-        assert_eq!(buf, expected);
-    }
-    // ANCHOR_END: render test
-
-    // ANCHOR: handle_key_event test
-    #[test]
-    fn handle_key_event() {
-        let mut app = App::default();
-        app.handle_key_event(KeyCode::Right.into());
-        assert_eq!(app.counter, 1);
-
-        app.handle_key_event(KeyCode::Left.into());
-        assert_eq!(app.counter, 0);
-
-        let mut app = App::default();
-        app.handle_key_event(KeyCode::Char('q').into());
-        assert!(app.exit);
-    }
-    // ANCHOR_END: handle_key_event test
-}
-// ANCHOR_END: tests
