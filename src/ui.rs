@@ -125,9 +125,7 @@ fn draw_window(_app: &App, window: &ActiveWindow, frame: &mut Frame) {
         (WindowType::PomodoroSettings, _) => {
             draw_pomodoro_settings_window(_app, area, frame);
         }
-        _ => {
-            draw_default_window(_app, area, &window.window_type, frame);
-        }
+        _ => {}
     }
 }
 
@@ -146,13 +144,13 @@ fn draw_create_task_window(
     frame.render_widget(clear_block, area);
 
     let block = Block::bordered()
-        .title(Line::from(" 🆕 Create New Task ").centered())
+        .title(Line::from(" 🆕 创建一个新的todo ").centered())
         .border_style(Style::default().fg(TokyoNight::CYAN))
         .border_set(border::DOUBLE)
         .bg(Color::Rgb(20, 20, 40)); // 深色背景
 
     let inner_area = block.inner(area);
-    frame.render_widget(block, area);
+    frame.render_widget(block.clone(), area);
 
     // 分割窗口内部区域
     let layout = Layout::horizontal([
@@ -161,99 +159,52 @@ fn draw_create_task_window(
     ]);
     let chunks = layout.split(inner_area);
 
-    let left_layout = Layout::vertical([Constraint::Length(20), Constraint::Length(80)]);
+    let left_layout = Layout::vertical([Constraint::Percentage(20), Constraint::Percentage(80)]);
     let left_areas = left_layout.split(chunks[0]);
 
-    let right_layout = Layout::vertical([Constraint::Length(20), Constraint::Length(80)]);
+    let right_layout = Layout::vertical([Constraint::Percentage(40), Constraint::Percentage(60)]);
     let right_areas = right_layout.split(chunks[1]);
 
-    // 标题输入框
-    let title_style = if current_field == 0 {
-        Style::default().fg(TokyoNight::CYAN).bold()
-    } else {
-        Style::default().fg(Color::Gray)
-    };
-
-    let title_block = Block::default().title(" Title ").title_style(title_style);
-
-    let title_text = if title.is_empty() {
-        "Enter task title...".to_string()
-    } else {
-        title.clone().parse().unwrap()
-    };
-
-    frame.render_widget(
-        Paragraph::new(title_text)
-            .block(title_block)
-            .style(title_style),
-        chunks[0],
-    );
-
-    // 分隔线
-    frame.render_widget(
-        Paragraph::new("─".repeat(chunks[1].width as usize)),
-        chunks[1],
-    );
-
-    // 描述输入框
-    let desc_style = if current_field == 1 {
-        Style::default().fg(TokyoNight::CYAN).bold()
-    } else {
-        Style::default().fg(Color::Gray)
-    };
-
-    let desc_block = Block::default()
-        .title(" Description ")
-        .title_style(desc_style);
-
-    let desc_text = if description.is_empty() {
-        "Enter task description...".to_string()
-    } else {
-        description.clone().parse().unwrap()
-    };
-
-    frame.render_widget(
-        Paragraph::new(desc_text)
-            .block(desc_block)
-            .style(desc_style),
-        chunks[2],
-    );
-
-    // 底部提示
-    let help_text = "Press Tab to switch field • Enter to save • Esc to cancel";
-    let help_paragraph = Paragraph::new(help_text)
-        .style(Style::default().fg(Color::DarkGray))
-        .alignment(ratatui::layout::Alignment::Center);
-
-    frame.render_widget(help_paragraph, chunks[3]);
+    draw_todo(_app, left_areas[0], frame);
+    draw_desc(_app, left_areas[1], frame);
+    draw_must_tag(_app, right_areas[0], frame);
+    draw_diy_tag(_app, right_areas[1], frame);
 }
 
-/// 默认窗口（用于测试）
-fn draw_default_window(_app: &App, area: Rect, window_type: &WindowType, frame: &mut Frame) {
-    let title = format!(" {:?} Window ", window_type);
+fn draw_todo(_app: &App, area: Rect, frame: &mut Frame) {
     let block = Block::bordered()
-        .title(Line::from(title).centered())
-        .border_style(Style::default().fg(TokyoNight::ORANGE))
+        .title(Line::from(" 新的todo ").centered())
         .border_set(border::ROUNDED)
-        .bg(Color::Rgb(20, 20, 40));
+        .border_style(Style::default().fg(TokyoNight::RED));
 
-    frame.render_widget(Clear, area);
+    frame.render_widget(block, area);
+}
 
-    // 先渲染区块
-    frame.render_widget(block.clone(), area); // 使用 clone
+fn draw_desc(_app: &App, area: Rect, frame: &mut Frame) {
+    let block = Block::bordered()
+        .title(Line::from(" todo的详细信息 ").centered())
+        .border_set(border::ROUNDED)
+        .border_style(Style::default().fg(TokyoNight::RED));
 
-    // 然后获取内部区域（从原始 block）
-    let inner_area = block.inner(area);
+    frame.render_widget(block, area);
+}
 
-    let content = format!(
-        "This is a {:?} window.\n\nPress 'Esc' to close.",
-        window_type
-    );
-    let paragraph = Paragraph::new(content)
-        .style(Style::default().fg(Color::White))
-        .alignment(ratatui::layout::Alignment::Center);
+fn draw_must_tag(_app: &App, area: Rect, frame: &mut Frame) {
+    let block = Block::bordered()
+        .title(Line::from(" 必选的标签 ").centered())
+        .border_set(border::ROUNDED)
+        .border_style(Style::default().fg(TokyoNight::RED));
 
-    frame.render_widget(paragraph, inner_area);
+    frame.render_widget(block, area);
+}
+
+fn draw_diy_tag(_app: &App, area: Rect, frame: &mut Frame) {
+    let block = Block::bordered()
+        .title(Line::from(" 自定义标签 ").centered())
+        .border_set(border::ROUNDED)
+        .border_style(Style::default().fg(TokyoNight::RED));
+
+    frame.render_widget(block, area);
 }
 
 fn draw_pomodoro_settings_window(_app: &App, area: Rect, frame: &mut Frame) {
@@ -264,7 +215,6 @@ fn draw_pomodoro_settings_window(_app: &App, area: Rect, frame: &mut Frame) {
         .border_style(Style::default().fg(TokyoNight::GRAY))
         .border_set(border::THICK)
         .bg(Color::Rgb(20, 20, 40)); // 深色背景
-
 
     let inner_area = block.inner(area);
 
@@ -278,7 +228,7 @@ fn draw_pomodoro_settings_window(_app: &App, area: Rect, frame: &mut Frame) {
 
     let rows = main_layout.split(inner_area);
 
-    // 上面切割出界面什么时候播放音乐.
+    // 上面切割出界面是否在番茄钟进行中和结束时播放音乐.
     let up_layout = Layout::horizontal([Constraint::Percentage(50), Constraint::Percentage(50)]);
     let up_areas = up_layout.split(rows[0]);
 
@@ -294,12 +244,9 @@ fn draw_pomodoro_settings_window(_app: &App, area: Rect, frame: &mut Frame) {
     draw_middle_left(_app, middle_areas[0], frame);
     draw_middle_right(_app, middle_areas[1], frame);
     draw_down(_app, rows[2], frame);
-
 }
 
 fn draw_up_left(_app: &App, area: Rect, frame: &mut Frame) {
-    frame.render_widget(Clear, area);
-
     let block = Block::bordered()
         .title(Line::from(" 是否在番茄钟运行时播放音乐? ").centered())
         .border_set(border::ROUNDED)
@@ -309,8 +256,6 @@ fn draw_up_left(_app: &App, area: Rect, frame: &mut Frame) {
 }
 
 fn draw_up_right(_app: &App, area: Rect, frame: &mut Frame) {
-    frame.render_widget(Clear, area);
-
     let block = Block::bordered()
         .title(Line::from(" 是否在番茄钟结束时播放音乐? ").centered())
         .border_set(border::ROUNDED)
@@ -320,8 +265,6 @@ fn draw_up_right(_app: &App, area: Rect, frame: &mut Frame) {
 }
 
 fn draw_middle_left(_app: &App, area: Rect, frame: &mut Frame) {
-    frame.render_widget(Clear, area);
-
     let block = Block::bordered()
         .title(Line::from(" 常用番茄钟时间 ").centered())
         .border_set(border::ROUNDED)
@@ -331,8 +274,6 @@ fn draw_middle_left(_app: &App, area: Rect, frame: &mut Frame) {
 }
 
 fn draw_middle_right(_app: &App, area: Rect, frame: &mut Frame) {
-    frame.render_widget(Clear, area);
-
     let block = Block::bordered()
         .title(Line::from(" 自定义番茄钟时间 ").centered())
         .border_set(border::ROUNDED)
@@ -342,8 +283,6 @@ fn draw_middle_right(_app: &App, area: Rect, frame: &mut Frame) {
 }
 
 fn draw_down(_app: &App, area: Rect, frame: &mut Frame) {
-    frame.render_widget(Clear, area);
-
     let block = Block::bordered()
         .title(Line::from(" 音乐播放列表 ").centered())
         .border_set(border::ROUNDED)

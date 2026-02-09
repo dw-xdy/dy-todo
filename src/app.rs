@@ -27,58 +27,6 @@ impl Default for App {
                 is_completed: true,
                 tags: std::collections::HashSet::new(),
             },
-            TodoTask {
-                title: "写代码".into(),
-                description: "使用 Rust 和 Ratatui 编写 TUI 应用".into(),
-                is_completed: false,
-                tags: std::collections::HashSet::new(),
-            },
-            TodoTask {
-                title: "去运动".into(),
-                description: "跑 5 公里，呼吸新鲜空气".into(),
-                is_completed: true,
-                tags: std::collections::HashSet::new(),
-            },
- 
-            TodoTask {
-                title: "写代码".into(),
-                description: "使用 Rust 和 Ratatui 编写 TUI 应用".into(),
-                is_completed: false,
-                tags: std::collections::HashSet::new(),
-            },
-            TodoTask {
-                title: "去运动".into(),
-                description: "跑 5 公里，呼吸新鲜空气".into(),
-                is_completed: true,
-                tags: std::collections::HashSet::new(),
-            },
- 
-            TodoTask {
-                title: "写代码".into(),
-                description: "使用 Rust 和 Ratatui 编写 TUI 应用".into(),
-                is_completed: false,
-                tags: std::collections::HashSet::new(),
-            },
-            TodoTask {
-                title: "去运动".into(),
-                description: "跑 5 公里，呼吸新鲜空气".into(),
-                is_completed: true,
-                tags: std::collections::HashSet::new(),
-            },
- 
-            TodoTask {
-                title: "写代码".into(),
-                description: "使用 Rust 和 Ratatui 编写 TUI 应用".into(),
-                is_completed: false,
-                tags: std::collections::HashSet::new(),
-            },
-            TodoTask {
-                title: "去运动".into(),
-                description: "跑 5 公里，呼吸新鲜空气".into(),
-                is_completed: true,
-                tags: std::collections::HashSet::new(),
-            },
- 
         ];
 
         // 2. 初始化 ListState
@@ -125,10 +73,9 @@ impl App {
             // 快捷键打开不同窗口
             KeyCode::Char('n') => self.open_window(WindowType::CreateTask),
             KeyCode::Char('p') => self.open_window(WindowType::PomodoroSettings),
-            KeyCode::Char('i') => self.open_window(WindowType::TaskDetail),
 
             // ESC 关闭当前窗口
-            KeyCode::Esc => self.close_window(),
+            KeyCode::Char('w') => self.close_window(),
             _ => {}
         }
     }
@@ -185,10 +132,10 @@ impl App {
         // 这里可以根据屏幕大小动态计算，先使用固定值
         match window_type {
             WindowType::CreateTask => WindowLayout {
-                x: 10,
-                y: 5,
-                width: 60,
-                height: 10,
+                x: 15,
+                y: 2,
+                width: 80,
+                height: 21,
             },
             // ... 其他窗口的默认布局
             _ => WindowLayout {
