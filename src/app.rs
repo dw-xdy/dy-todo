@@ -27,6 +27,58 @@ impl Default for App {
                 is_completed: true,
                 tags: std::collections::HashSet::new(),
             },
+            TodoTask {
+                title: "写代码".into(),
+                description: "使用 Rust 和 Ratatui 编写 TUI 应用".into(),
+                is_completed: false,
+                tags: std::collections::HashSet::new(),
+            },
+            TodoTask {
+                title: "去运动".into(),
+                description: "跑 5 公里，呼吸新鲜空气".into(),
+                is_completed: true,
+                tags: std::collections::HashSet::new(),
+            },
+ 
+            TodoTask {
+                title: "写代码".into(),
+                description: "使用 Rust 和 Ratatui 编写 TUI 应用".into(),
+                is_completed: false,
+                tags: std::collections::HashSet::new(),
+            },
+            TodoTask {
+                title: "去运动".into(),
+                description: "跑 5 公里，呼吸新鲜空气".into(),
+                is_completed: true,
+                tags: std::collections::HashSet::new(),
+            },
+ 
+            TodoTask {
+                title: "写代码".into(),
+                description: "使用 Rust 和 Ratatui 编写 TUI 应用".into(),
+                is_completed: false,
+                tags: std::collections::HashSet::new(),
+            },
+            TodoTask {
+                title: "去运动".into(),
+                description: "跑 5 公里，呼吸新鲜空气".into(),
+                is_completed: true,
+                tags: std::collections::HashSet::new(),
+            },
+ 
+            TodoTask {
+                title: "写代码".into(),
+                description: "使用 Rust 和 Ratatui 编写 TUI 应用".into(),
+                is_completed: false,
+                tags: std::collections::HashSet::new(),
+            },
+            TodoTask {
+                title: "去运动".into(),
+                description: "跑 5 公里，呼吸新鲜空气".into(),
+                is_completed: true,
+                tags: std::collections::HashSet::new(),
+            },
+ 
         ];
 
         // 2. 初始化 ListState
@@ -140,10 +192,10 @@ impl App {
             },
             // ... 其他窗口的默认布局
             _ => WindowLayout {
-                x: 20,
-                y: 3,
-                width: 60,
-                height: 20,
+                x: 15,
+                y: 2,
+                width: 80,
+                height: 21,
             },
         }
     }

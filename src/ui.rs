@@ -257,11 +257,18 @@ fn draw_default_window(_app: &App, area: Rect, window_type: &WindowType, frame: 
 }
 
 fn draw_pomodoro_settings_window(_app: &App, area: Rect, frame: &mut Frame) {
+    frame.render_widget(Clear, area);
+
     let block = Block::bordered()
         .title(Line::from(" 🍅 Pomodoro设置 ").centered())
-        .border_style(Style::default().fg(TokyoNight::CYAN))
-        .border_set(border::DOUBLE)
+        .border_style(Style::default().fg(TokyoNight::GRAY))
+        .border_set(border::THICK)
         .bg(Color::Rgb(20, 20, 40)); // 深色背景
+
+
+    let inner_area = block.inner(area);
+
+    frame.render_widget(block.clone(), area);
 
     let main_layout = Layout::vertical([
         Constraint::Percentage(15),
@@ -269,7 +276,7 @@ fn draw_pomodoro_settings_window(_app: &App, area: Rect, frame: &mut Frame) {
         Constraint::Percentage(60),
     ]);
 
-    let rows = main_layout.split(area);
+    let rows = main_layout.split(inner_area);
 
     // 上面切割出界面什么时候播放音乐.
     let up_layout = Layout::horizontal([Constraint::Percentage(50), Constraint::Percentage(50)]);
@@ -277,7 +284,7 @@ fn draw_pomodoro_settings_window(_app: &App, area: Rect, frame: &mut Frame) {
 
     // 中间切割出常用时间和自定义的时间
     let middle_layout =
-        Layout::horizontal([Constraint::Percentage(50), Constraint::Percentage(50)]);
+        Layout::horizontal([Constraint::Percentage(40), Constraint::Percentage(60)]);
     let middle_areas = middle_layout.split(rows[1]);
 
     // 下面就不切割了, 因为是音乐播放列表
@@ -287,52 +294,60 @@ fn draw_pomodoro_settings_window(_app: &App, area: Rect, frame: &mut Frame) {
     draw_middle_left(_app, middle_areas[0], frame);
     draw_middle_right(_app, middle_areas[1], frame);
     draw_down(_app, rows[2], frame);
+
 }
 
 fn draw_up_left(_app: &App, area: Rect, frame: &mut Frame) {
+    frame.render_widget(Clear, area);
+
     let block = Block::bordered()
         .title(Line::from(" 是否在番茄钟运行时播放音乐? ").centered())
         .border_set(border::ROUNDED)
-        .border_style(Style::default().fg(TokyoNight::MAGENTA));
+        .border_style(Style::default().fg(TokyoNight::RED));
 
     frame.render_widget(block, area);
 }
 
 fn draw_up_right(_app: &App, area: Rect, frame: &mut Frame) {
+    frame.render_widget(Clear, area);
+
     let block = Block::bordered()
         .title(Line::from(" 是否在番茄钟结束时播放音乐? ").centered())
         .border_set(border::ROUNDED)
-        .border_style(Style::default().fg(TokyoNight::MAGENTA));
+        .border_style(Style::default().fg(TokyoNight::RED));
 
     frame.render_widget(block, area);
 }
 
 fn draw_middle_left(_app: &App, area: Rect, frame: &mut Frame) {
+    frame.render_widget(Clear, area);
+
     let block = Block::bordered()
         .title(Line::from(" 常用番茄钟时间 ").centered())
         .border_set(border::ROUNDED)
-        .border_style(Style::default().fg(TokyoNight::MAGENTA));
+        .border_style(Style::default().fg(TokyoNight::ORANGE));
 
-    frame.render_widget(Paragraph::new(" 选择番茄钟时间 ").block(block), area);
+    frame.render_widget(block, area);
 }
 
 fn draw_middle_right(_app: &App, area: Rect, frame: &mut Frame) {
+    frame.render_widget(Clear, area);
+
     let block = Block::bordered()
         .title(Line::from(" 自定义番茄钟时间 ").centered())
         .border_set(border::ROUNDED)
-        .border_style(Style::default().fg(TokyoNight::MAGENTA));
+        .border_style(Style::default().fg(TokyoNight::ORANGE));
 
-    frame.render_widget(Paragraph::new(" 请自定义番茄钟时间 ").block(block), area);
+    frame.render_widget(block, area);
 }
 
 fn draw_down(_app: &App, area: Rect, frame: &mut Frame) {
+    frame.render_widget(Clear, area);
+
     let block = Block::bordered()
         .title(Line::from(" 音乐播放列表 ").centered())
         .border_set(border::ROUNDED)
-        .border_style(Style::default().fg(TokyoNight::MAGENTA));
+        .border_style(Style::default().fg(TokyoNight::CYAN));
 
-    frame.render_widget(
-        Paragraph::new(" 请选择你想要播放的音乐 ").block(block),
-        area,
-    );
+    frame.render_widget(block, area);
 }
