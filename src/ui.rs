@@ -82,7 +82,3 @@ fn draw_details(_app: &App, area: Rect, frame: &mut Frame) {
     let paragraph = Paragraph::new("这里是任务的详细描述...").block(block);
     frame.render_widget(paragraph, area);
 }
-
-
-
-
