@@ -1,10 +1,10 @@
 use std::fs::File;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
-use std::time::Duration;
 use std::thread;
+use std::time::Duration;
 
-use rodio::{Decoder};
+use rodio::Decoder;
 use walkdir::WalkDir;
 
 // 结构体表示音频文件
@@ -25,20 +25,20 @@ fn scan_mp3_files(directory: &str) -> Result<Vec<AudioFile>, Box<dyn std::error:
     {
         let path = entry.path();
 
-        if path.is_file() {
-            if let Some(ext) = path.extension() {
-                if ext.to_ascii_lowercase() == "mp3" {
-                    let name = path.file_stem()
-                        .unwrap_or_default()
-                        .to_string_lossy()
-                        .to_string();
+        if path.is_file()
+            && let Some(ext) = path.extension()
+            && (ext.to_ascii_lowercase() == "mp3" || ext.to_ascii_lowercase() == "wav")
+        {
+            let name = path
+                .file_stem()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .to_string();
 
-                    mp3_files.push(AudioFile {
-                        path: path.to_path_buf(),
-                        name,
-                    });
-                }
-            }
+            mp3_files.push(AudioFile {
+                path: path.to_path_buf(),
+                name,
+            });
         }
     }
 
@@ -47,8 +47,8 @@ fn scan_mp3_files(directory: &str) -> Result<Vec<AudioFile>, Box<dyn std::error:
 }
 
 fn play_mp3_file(path: &Path) -> Result<(), Box<dyn std::error::Error>> {
-    let stream_handle = rodio::OutputStreamBuilder::open_default_stream()
-        .expect("open default audio stream");
+    let stream_handle =
+        rodio::OutputStreamBuilder::open_default_stream().expect("open default audio stream");
 
     // 2. 创建 Sink。
     let sink = rodio::Sink::connect_new(&stream_handle.mixer());
