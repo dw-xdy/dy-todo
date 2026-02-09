@@ -1,4 +1,3 @@
-use std::net::IpAddr;
 use crate::app::App;
 use crate::models::{ActiveWindow, TokyoNight, WindowData, WindowType};
 use ratatui::{
@@ -8,8 +7,9 @@ use ratatui::{
     style::{Style, Stylize},
     symbols::border,
     text::Line,
-    widgets::{Block, Paragraph, Clear, List, ListItem},
+    widgets::{Block, Clear, List, ListItem, Paragraph},
 };
+use std::net::IpAddr;
 
 pub fn render(app: &App, frame: &mut Frame) {
     let area = frame.area();
@@ -112,7 +112,14 @@ fn draw_window(_app: &App, window: &ActiveWindow, frame: &mut Frame) {
 
     // 根据窗口类型渲染不同内容
     match (&window.window_type, &window.data) {
-        (WindowType::CreateTask, WindowData::CreateTask { title, description, current_field }) => {
+        (
+            WindowType::CreateTask,
+            WindowData::CreateTask {
+                title,
+                description,
+                current_field,
+            },
+        ) => {
             draw_create_task_window(_app, area, title, description, *current_field, frame);
         }
         (WindowType::PomodoroSettings, _) => {
@@ -124,9 +131,15 @@ fn draw_window(_app: &App, window: &ActiveWindow, frame: &mut Frame) {
     }
 }
 
-
 /// 创建任务窗口
-fn draw_create_task_window(_app: &App, area: Rect, title: &str, description: &str, current_field: usize, frame: &mut Frame) {
+fn draw_create_task_window(
+    _app: &App,
+    area: Rect,
+    title: &str,
+    description: &str,
+    current_field: usize,
+    frame: &mut Frame,
+) {
     // 先清除区域（创建半透明遮罩效果）
     let clear_block = Block::default();
     frame.render_widget(Clear, area);
@@ -161,9 +174,7 @@ fn draw_create_task_window(_app: &App, area: Rect, title: &str, description: &st
         Style::default().fg(Color::Gray)
     };
 
-    let title_block = Block::default()
-        .title(" Title ")
-        .title_style(title_style);
+    let title_block = Block::default().title(" Title ").title_style(title_style);
 
     let title_text = if title.is_empty() {
         "Enter task title...".to_string()
@@ -175,13 +186,13 @@ fn draw_create_task_window(_app: &App, area: Rect, title: &str, description: &st
         Paragraph::new(title_text)
             .block(title_block)
             .style(title_style),
-        chunks[0]
+        chunks[0],
     );
 
     // 分隔线
     frame.render_widget(
         Paragraph::new("─".repeat(chunks[1].width as usize)),
-        chunks[1]
+        chunks[1],
     );
 
     // 描述输入框
@@ -205,7 +216,7 @@ fn draw_create_task_window(_app: &App, area: Rect, title: &str, description: &st
         Paragraph::new(desc_text)
             .block(desc_block)
             .style(desc_style),
-        chunks[2]
+        chunks[2],
     );
 
     // 底部提示
@@ -216,7 +227,6 @@ fn draw_create_task_window(_app: &App, area: Rect, title: &str, description: &st
 
     frame.render_widget(help_paragraph, chunks[3]);
 }
-
 
 /// 默认窗口（用于测试）
 fn draw_default_window(_app: &App, area: Rect, window_type: &WindowType, frame: &mut Frame) {
@@ -230,12 +240,15 @@ fn draw_default_window(_app: &App, area: Rect, window_type: &WindowType, frame: 
     frame.render_widget(Clear, area);
 
     // 先渲染区块
-    frame.render_widget(block.clone(), area);  // 使用 clone
+    frame.render_widget(block.clone(), area); // 使用 clone
 
     // 然后获取内部区域（从原始 block）
     let inner_area = block.inner(area);
 
-    let content = format!("This is a {:?} window.\n\nPress 'Esc' to close.", window_type);
+    let content = format!(
+        "This is a {:?} window.\n\nPress 'Esc' to close.",
+        window_type
+    );
     let paragraph = Paragraph::new(content)
         .style(Style::default().fg(Color::White))
         .alignment(ratatui::layout::Alignment::Center);
@@ -251,9 +264,9 @@ fn draw_pomodoro_settings_window(_app: &App, area: Rect, frame: &mut Frame) {
         .bg(Color::Rgb(20, 20, 40)); // 深色背景
 
     let main_layout = Layout::vertical([
-        Constraint::Length(20),
-        Constraint::Length(30),
-        Constraint::Length(50),
+        Constraint::Percentage(15),
+        Constraint::Percentage(25),
+        Constraint::Percentage(60),
     ]);
 
     let rows = main_layout.split(area);
@@ -263,7 +276,8 @@ fn draw_pomodoro_settings_window(_app: &App, area: Rect, frame: &mut Frame) {
     let up_areas = up_layout.split(rows[0]);
 
     // 中间切割出常用时间和自定义的时间
-    let middle_layout = Layout::horizontal([Constraint::Percentage(50), Constraint::Percentage(50)]);
+    let middle_layout =
+        Layout::horizontal([Constraint::Percentage(50), Constraint::Percentage(50)]);
     let middle_areas = middle_layout.split(rows[1]);
 
     // 下面就不切割了, 因为是音乐播放列表
@@ -275,25 +289,23 @@ fn draw_pomodoro_settings_window(_app: &App, area: Rect, frame: &mut Frame) {
     draw_down(_app, rows[2], frame);
 }
 
-
 fn draw_up_left(_app: &App, area: Rect, frame: &mut Frame) {
     let block = Block::bordered()
-        .title(Line::from(" 是否在番茄钟运行的时候播放音乐? ").centered())
+        .title(Line::from(" 是否在番茄钟运行时播放音乐? ").centered())
         .border_set(border::ROUNDED)
         .border_style(Style::default().fg(TokyoNight::MAGENTA));
 
-    frame.render_widget(Paragraph::new(" 是否播放呢? ").block(block), area);
+    frame.render_widget(block, area);
 }
 
 fn draw_up_right(_app: &App, area: Rect, frame: &mut Frame) {
     let block = Block::bordered()
-        .title(Line::from(" 是否在番茄钟结束的时候播放音乐? ").centered())
+        .title(Line::from(" 是否在番茄钟结束时播放音乐? ").centered())
         .border_set(border::ROUNDED)
         .border_style(Style::default().fg(TokyoNight::MAGENTA));
 
-    frame.render_widget(Paragraph::new(" 是否播放呢? ").block(block), area);
+    frame.render_widget(block, area);
 }
-
 
 fn draw_middle_left(_app: &App, area: Rect, frame: &mut Frame) {
     let block = Block::bordered()
@@ -319,6 +331,8 @@ fn draw_down(_app: &App, area: Rect, frame: &mut Frame) {
         .border_set(border::ROUNDED)
         .border_style(Style::default().fg(TokyoNight::MAGENTA));
 
-    frame.render_widget(Paragraph::new(" 请选择你想要播放的音乐 ").block(block), area);
+    frame.render_widget(
+        Paragraph::new(" 请选择你想要播放的音乐 ").block(block),
+        area,
+    );
 }
-
