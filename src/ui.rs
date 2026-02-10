@@ -43,7 +43,7 @@ fn draw_search(_app: &App, area: Rect, frame: &mut Frame) {
 }
 
 fn draw_todo_list(app: &App, area: Rect, frame: &mut Frame) {
-    // 1. 原有的渲染列表逻辑 (保持不变)
+    // 1. 原有的渲染列表逻辑 ( 保持不变 )
     let items: Vec<ListItem> = app
         .tasks
         .iter()
@@ -87,6 +87,7 @@ fn draw_todo_list(app: &App, area: Rect, frame: &mut Frame) {
         &mut app.scroll_state.clone(),
     );
 }
+
 fn draw_pomodoro(_app: &App, area: Rect, frame: &mut Frame) {
     let block = Block::bordered()
         .title(Line::from(" 🍅 Pomodoro ").centered())
@@ -295,11 +296,31 @@ fn draw_middle_right(_app: &App, area: Rect, frame: &mut Frame) {
     frame.render_widget(block, area);
 }
 
-fn draw_down(_app: &App, area: Rect, frame: &mut Frame) {
+// 在 ui.rs 中
+fn draw_down(app: &App, area: Rect, frame: &mut Frame) {
     let block = Block::bordered()
-        .title(Line::from(" 音乐播放列表 ").centered())
+        .title(Line::from(" 🎵 音乐播放列表 ").centered())
         .border_set(border::ROUNDED)
         .border_style(Style::default().fg(TokyoNight::CYAN));
 
-    frame.render_widget(block, area);
+    // 将音频文件转换为 ListItem
+    let items: Vec<ListItem> = app
+        .music_files
+        .iter()
+        .map(|file| ListItem::new(Line::from(vec![" 🎶 ".into(), file.name.clone().into()])))
+        .collect();
+
+    // 创建列表组件
+    let list = List::new(items)
+        .block(block)
+        .highlight_style(
+            Style::default()
+                .bg(TokyoNight::GRAY)
+                .fg(Color::White)
+                .bold(),
+        )
+        .highlight_symbol("▶ ");
+
+    // 使用 music_list_state 进行有状态渲染
+    frame.render_stateful_widget(list, area, &mut app.music_list_state.clone());
 }

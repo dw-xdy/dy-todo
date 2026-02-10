@@ -1,9 +1,10 @@
-use crate::models::{ActiveWindow, TodoTask, WindowData, WindowLayout, WindowType};
+use crate::models::{ActiveWindow, AudioFileInfo, TodoTask, WindowData, WindowLayout, WindowType};
 use crate::ui; // 引入 UI 渲染
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
 use ratatui::widgets::ScrollbarState; // 确保导入
 use ratatui::{DefaultTerminal, widgets::ListState};
 use std::io;
+use walkdir::WalkDir; // 确保 Cargo.toml 有 walkdir 依赖
 
 pub struct App {
     pub exit: bool,
@@ -11,6 +12,9 @@ pub struct App {
     pub list_state: ListState,
     pub active_window: Option<ActiveWindow>, // 当前活动窗口（None 表示无窗口）
     pub scroll_state: ScrollbarState,
+    // 音乐
+    pub music_files: Vec<AudioFileInfo>,
+    pub music_list_state: ListState, // 音乐列表的选中状态
 }
 
 impl Default for App {
@@ -29,220 +33,10 @@ impl Default for App {
                 is_completed: true,
                 tags: std::collections::HashSet::new(),
             },
-TodoTask {
+            TodoTask {
                 title: "写代码".into(),
                 description: "使用 Rust 和 Ratatui 编写 TUI 应用".into(),
                 is_completed: false,
-                tags: std::collections::HashSet::new(),
-            },
-            TodoTask {
-                title: "去运动".into(),
-                description: "跑 5 公里，呼吸新鲜空气".into(),
-                is_completed: true,
-                tags: std::collections::HashSet::new(),
-            },
-TodoTask {
-                title: "写代码".into(),
-                description: "使用 Rust 和 Ratatui 编写 TUI 应用".into(),
-                is_completed: false,
-                tags: std::collections::HashSet::new(),
-            },
-            TodoTask {
-                title: "去运动".into(),
-                description: "跑 5 公里，呼吸新鲜空气".into(),
-                is_completed: true,
-                tags: std::collections::HashSet::new(),
-            },
-TodoTask {
-                title: "写代码".into(),
-                description: "使用 Rust 和 Ratatui 编写 TUI 应用".into(),
-                is_completed: false,
-                tags: std::collections::HashSet::new(),
-            },
-            TodoTask {
-                title: "去运动".into(),
-                description: "跑 5 公里，呼吸新鲜空气".into(),
-                is_completed: true,
-                tags: std::collections::HashSet::new(),
-            },
-TodoTask {
-                title: "写代码".into(),
-                description: "使用 Rust 和 Ratatui 编写 TUI 应用".into(),
-                is_completed: false,
-                tags: std::collections::HashSet::new(),
-            },
-            TodoTask {
-                title: "去运动".into(),
-                description: "跑 5 公里，呼吸新鲜空气".into(),
-                is_completed: true,
-                tags: std::collections::HashSet::new(),
-            },
-TodoTask {
-                title: "写代码".into(),
-                description: "使用 Rust 和 Ratatui 编写 TUI 应用".into(),
-                is_completed: false,
-                tags: std::collections::HashSet::new(),
-            },
-            TodoTask {
-                title: "写代码kdfosnaghaiovncxzhigovncxzhvizkzxcvhiz去运动".into(),
-                description: "跑 5 公里，呼吸新鲜空气".into(),
-                is_completed: true,
-                tags: std::collections::HashSet::new(),
-            },
-TodoTask {
-                title: "写代码".into(),
-                description: "使用 Rust 和 Ratatui 编写 TUI 应用".into(),
-                is_completed: false,
-                tags: std::collections::HashSet::new(),
-            },
-            TodoTask {
-                title: "去运动kdosanghviocxznghivcxzkxzcvhizkzxvchiz".into(),
-                description: "跑 5 公里，呼吸新鲜空气".into(),
-                is_completed: true,
-                tags: std::collections::HashSet::new(),
-            },
-TodoTask {
-                title: "写代码kdfosnaghaiovncxzhigovncxzhvizkzxcvhiz".into(),
-                description: "使用 Rust 和 Ratatui 编写 TUI 应用".into(),
-                is_completed: false,
-                tags: std::collections::HashSet::new(),
-            },
-            TodoTask {
-                title: "dksoagnvhcioxzngvhcixoznxzcvhizkxzcvhizkxzcvhiz去运动".into(),
-                description: "跑 5 公里，呼吸新鲜空气".into(),
-                is_completed: true,
-                tags: std::collections::HashSet::new(),
-            },
-TodoTask {
-                title: "开始实行按".into(),
-                description: "使用 Rust 和 Ratatui 编写 TUI 应用".into(),
-                is_completed: false,
-                tags: std::collections::HashSet::new(),
-            },
-            TodoTask {
-                title: "去运动".into(),
-                description: "跑 5 公里，呼吸新鲜空气".into(),
-                is_completed: true,
-                tags: std::collections::HashSet::new(),
-            },
-TodoTask {
-                title: "写代码".into(),
-                description: "使用 Rust 和 Ratatui 编写 TUI 应用".into(),
-                is_completed: false,
-                tags: std::collections::HashSet::new(),
-            },
-            TodoTask {
-                title: "kdsanghio".into(),
-                description: "跑 5 公里，呼吸新鲜空气".into(),
-                is_completed: true,
-                tags: std::collections::HashSet::new(),
-            },
-TodoTask {
-                title: "ognhviocxznghivcxzkvzhivzkzxhcviz".into(),
-                description: "使用 Rust 和 Ratatui 编写 TUI 应用".into(),
-                is_completed: false,
-                tags: std::collections::HashSet::new(),
-            },
-            TodoTask {
-                title: "324fodsaga".into(),
-                description: "跑 5 公里，呼吸新鲜空气".into(),
-                is_completed: true,
-                tags: std::collections::HashSet::new(),
-            },
-TodoTask {
-                title: "ognhviocxznghivcxzkvzhivzkzxhcviz".into(),
-                description: "使用 Rust 和 Ratatui 编写 TUI 应用".into(),
-                is_completed: false,
-                tags: std::collections::HashSet::new(),
-            },
-            TodoTask {
-                title: "324fodsaga".into(),
-                description: "跑 5 公里，呼吸新鲜空气".into(),
-                is_completed: true,
-                tags: std::collections::HashSet::new(),
-            },
-TodoTask {
-                title: "ognhviocxznghivcxzkvzhivzkzxhcviz".into(),
-                description: "使用 Rust 和 Ratatui 编写 TUI 应用".into(),
-                is_completed: false,
-                tags: std::collections::HashSet::new(),
-            },
-            TodoTask {
-                title: "324fodsaga".into(),
-                description: "跑 5 公里，呼吸新鲜空气".into(),
-                is_completed: true,
-                tags: std::collections::HashSet::new(),
-            },
-TodoTask {
-                title: "ognhviocxznghivcxzkvzhivzkzxhcviz".into(),
-                description: "使用 Rust 和 Ratatui 编写 TUI 应用".into(),
-                is_completed: false,
-                tags: std::collections::HashSet::new(),
-            },
-            TodoTask {
-                title: "324fodsaga".into(),
-                description: "跑 5 公里，呼吸新鲜空气".into(),
-                is_completed: true,
-                tags: std::collections::HashSet::new(),
-            },
-TodoTask {
-                title: "ognhviocxznghivcxzkvzhivzkzxhcviz".into(),
-                description: "使用 Rust 和 Ratatui 编写 TUI 应用".into(),
-                is_completed: false,
-                tags: std::collections::HashSet::new(),
-            },
-            TodoTask {
-                title: "324fodsaga".into(),
-                description: "跑 5 公里，呼吸新鲜空气".into(),
-                is_completed: true,
-                tags: std::collections::HashSet::new(),
-            },
-TodoTask {
-                title: "ognhviocxznghivcxzkvzhivzkzxhcviz".into(),
-                description: "使用 Rust 和 Ratatui 编写 TUI 应用".into(),
-                is_completed: false,
-                tags: std::collections::HashSet::new(),
-            },
-            TodoTask {
-                title: "324fodsaga".into(),
-                description: "跑 5 公里，呼吸新鲜空气".into(),
-                is_completed: true,
-                tags: std::collections::HashSet::new(),
-            },
-TodoTask {
-                title: "ognhviocxznghivcxzkvzhivzkzxhcviz".into(),
-                description: "使用 Rust 和 Ratatui 编写 TUI 应用".into(),
-                is_completed: false,
-                tags: std::collections::HashSet::new(),
-            },
-            TodoTask {
-                title: "324fodsaga".into(),
-                description: "跑 5 公里，呼吸新鲜空气".into(),
-                is_completed: true,
-                tags: std::collections::HashSet::new(),
-            },
-TodoTask {
-                title: "ognhviocxznghivcxzkvzhivzkzxhcviz".into(),
-                description: "使用 Rust 和 Ratatui 编写 TUI 应用".into(),
-                is_completed: false,
-                tags: std::collections::HashSet::new(),
-            },
-            TodoTask {
-                title: "324fodsaga".into(),
-                description: "跑 5 公里，呼吸新鲜空气".into(),
-                is_completed: true,
-                tags: std::collections::HashSet::new(),
-            },
-TodoTask {
-                title: "ognhviocxznghivcxzkvzhivzkzxhcviz".into(),
-                description: "使用 Rust 和 Ratatui 编写 TUI 应用".into(),
-                is_completed: false,
-                tags: std::collections::HashSet::new(),
-            },
-            TodoTask {
-                title: "324fodsaga".into(),
-                description: "跑 5 公里，呼吸新鲜空气".into(),
-                is_completed: true,
                 tags: std::collections::HashSet::new(),
             },
         ];
@@ -256,13 +50,22 @@ TodoTask {
         }
 
         let tasks_len = tasks.len();
-        Self {
+        let mut app = Self {
             exit: false,
             tasks,
-            list_state: list_state,
+            list_state,
             scroll_state: ScrollbarState::new(tasks_len), // <--- 初始化
+            music_files: Vec::new(),
+            music_list_state: ListState::default(),
             active_window: None,
-        }
+        };
+
+        // 2. 在这里调用加载目录的代码
+        // 建议：由于 "F:\\..." 是 Windows 路径，确保你的开发环境路径正确
+        app.load_music_from_dir("F:\\D\\音乐\\音乐文件");
+
+        // 3. 返回配置好的 app
+        app
     }
 }
 
@@ -377,6 +180,43 @@ impl App {
                 current_field: 0,
             },
             _ => WindowData::Empty,
+        }
+    }
+
+    /// 扫描指定目录并将音频文件载入应用
+    pub fn load_music_from_dir(&mut self, directory: &str) {
+        let mut files = Vec::new();
+
+        // 遍历目录寻找 mp3/wav 文件
+        for entry in WalkDir::new(directory)
+            .follow_links(true)
+            .into_iter()
+            .filter_map(|e| e.ok())
+        {
+            let path = entry.path();
+            if path.is_file()
+                && path.extension().map_or(false, |ext| {
+                    let ext_str = ext.to_ascii_lowercase();
+                    ext_str == "mp3" || ext_str == "wav"
+                })
+            {
+                files.push(AudioFileInfo {
+                    name: path
+                        .file_stem()
+                        .unwrap_or_default()
+                        .to_string_lossy()
+                        .to_string(),
+                    path: path.to_path_buf(),
+                });
+            }
+        }
+
+        files.sort_by(|a, b| a.name.cmp(&b.name)); // 排序
+        self.music_files = files;
+
+        // 如果有文件，默认选中第一个
+        if !self.music_files.is_empty() {
+            self.music_list_state.select(Some(0));
         }
     }
 }

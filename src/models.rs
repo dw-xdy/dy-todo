@@ -69,3 +69,9 @@ pub struct ActiveWindow {
     pub data: WindowData,
     pub is_visible: bool,
 }
+
+// 音乐播放定义的结构
+pub struct AudioFileInfo {
+    pub name: String,
+    pub path: std::path::PathBuf,
+}
