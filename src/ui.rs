@@ -7,7 +7,7 @@ use ratatui::{
     style::{Style, Stylize},
     symbols::border,
     text::Line,
-    widgets::{Block, Clear, List, ListItem, Paragraph},
+    widgets::{Block, Clear, List, ListItem, Paragraph, Scrollbar, ScrollbarOrientation},
 };
 use std::net::IpAddr;
 
@@ -43,7 +43,7 @@ fn draw_search(_app: &App, area: Rect, frame: &mut Frame) {
 }
 
 fn draw_todo_list(app: &App, area: Rect, frame: &mut Frame) {
-    // 1. 将任务转换为 ListItem
+    // 1. 原有的渲染列表逻辑 (保持不变)
     let items: Vec<ListItem> = app
         .tasks
         .iter()
@@ -53,15 +53,12 @@ fn draw_todo_list(app: &App, area: Rect, frame: &mut Frame) {
         })
         .collect();
 
-    // 2. 创建 List 组件并设置样式
     let list = List::new(items)
         .block(
             Block::bordered()
                 .title(Line::from(" 📝 Todo List ").centered())
-                .border_style(Style::default().fg(TokyoNight::CYAN))
                 .border_set(border::DOUBLE),
         )
-        // 设置选中行的高亮样式
         .highlight_style(
             Style::default()
                 .bg(TokyoNight::GRAY)
@@ -70,10 +67,26 @@ fn draw_todo_list(app: &App, area: Rect, frame: &mut Frame) {
         )
         .highlight_symbol(">> ");
 
-    // 3. 使用 state 进行渲染（关键：必须用 render_stateful_widget）
+    // 注意：这里需要传入可变引用的拷贝
     frame.render_stateful_widget(list, area, &mut app.list_state.clone());
-}
 
+    // 2. 渲染滚动条
+    // 我们创建一个垂直滚动条，放在区域的右侧
+    let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
+        .track_symbol(Some("░"))
+        .thumb_symbol("█");
+
+    // 渲染滚动条需要它的状态
+    // 我们通常在 block 内部渲染它，所以可以用 area
+    frame.render_stateful_widget(
+        scrollbar,
+        area.inner(ratatui::layout::Margin {
+            vertical: 1,
+            horizontal: 0,
+        }), // 稍微内缩，避免压住边框
+        &mut app.scroll_state.clone(),
+    );
+}
 fn draw_pomodoro(_app: &App, area: Rect, frame: &mut Frame) {
     let block = Block::bordered()
         .title(Line::from(" 🍅 Pomodoro ").centered())
@@ -159,7 +172,7 @@ fn draw_create_task_window(
     ]);
     let chunks = layout.split(inner_area);
 
-    let left_layout = Layout::vertical([Constraint::Percentage(20), Constraint::Percentage(80)]);
+    let left_layout = Layout::vertical([Constraint::Percentage(30), Constraint::Percentage(70)]);
     let left_areas = left_layout.split(chunks[0]);
 
     let right_layout = Layout::vertical([Constraint::Percentage(40), Constraint::Percentage(60)]);
@@ -193,7 +206,7 @@ fn draw_must_tag(_app: &App, area: Rect, frame: &mut Frame) {
     let block = Block::bordered()
         .title(Line::from(" 必选的标签 ").centered())
         .border_set(border::ROUNDED)
-        .border_style(Style::default().fg(TokyoNight::RED));
+        .border_style(Style::default().fg(TokyoNight::ORANGE));
 
     frame.render_widget(block, area);
 }
@@ -202,7 +215,7 @@ fn draw_diy_tag(_app: &App, area: Rect, frame: &mut Frame) {
     let block = Block::bordered()
         .title(Line::from(" 自定义标签 ").centered())
         .border_set(border::ROUNDED)
-        .border_style(Style::default().fg(TokyoNight::RED));
+        .border_style(Style::default().fg(TokyoNight::ORANGE));
 
     frame.render_widget(block, area);
 }
