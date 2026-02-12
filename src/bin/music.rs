@@ -102,7 +102,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mp3_files = scan_mp3_files(target_directory)?;
 
     if mp3_files.is_empty() {
-        println!("在目录 {target_directory} 中未找到MP3文件");
+        println!("在目录 {target_directory} 中未找到MP3 / WAV文件");
         return Ok(());
     }
 

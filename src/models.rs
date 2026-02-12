@@ -46,21 +46,6 @@ pub struct WindowLayout {
     pub height: u16, // 窗口高度
 }
 
-/// 窗口数据（根据不同类型存储不同数据）
-#[derive(Debug, Clone)]
-pub enum WindowData {
-    CreateTask {
-        title: String,
-        description: String,
-        current_field: usize, // 0: title, 1: description
-    },
-    Search {
-        query: String,
-    },
-    // 其他窗口类型的数据...
-    Empty,
-}
-
 /// 当前活动窗口
 #[derive(Debug, Clone)]
 pub struct ActiveWindow {
@@ -74,4 +59,26 @@ pub struct ActiveWindow {
 pub struct AudioFileInfo {
     pub name: String,
     pub path: std::path::PathBuf,
+}
+
+/// 窗口数据（根据不同类型存储不同数据）
+#[derive(Debug, Clone)]
+pub enum WindowData {
+    CreateTask {
+        title: String,
+        description: String,
+        current_field: usize, // 0: title, 1: description
+    },
+    PomodoroSettings {
+        play_during_pomodoro: bool,
+        play_on_finish: bool,
+        selected_duration: usize, // 0: 15, 1: 20, 2: 25, 3: 30, 4: 45
+        custom_duration: String,
+        current_focus: usize, // 0-4 对应不同焦点区域
+    },
+    Search {
+        query: String,
+    },
+    // 其他窗口类型的数据...
+    Empty,
 }

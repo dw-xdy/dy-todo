@@ -20,7 +20,7 @@ pub fn render(app: &App, frame: &mut Frame) {
     ]);
     let cols = main_layout.split(area);
 
-    let right_layout = Layout::vertical([Constraint::Length(10), Constraint::Min(0)]);
+    let right_layout = Layout::vertical([Constraint::Percentage(30), Constraint::Percentage(70)]);
     let right_areas = right_layout.split(cols[2]);
 
     draw_search(app, cols[0], frame);
@@ -38,7 +38,7 @@ fn draw_search(_app: &App, area: Rect, frame: &mut Frame) {
     let block = Block::bordered()
         .title(Line::from(" 🔍 Search ").centered())
         .border_style(Style::default().fg(TokyoNight::MAGENTA))
-        .border_set(border::THICK);
+        .border_set(border::ROUNDED);
     frame.render_widget(Paragraph::new("输入关键词搜索...").block(block), area);
 }
 
@@ -57,7 +57,7 @@ fn draw_todo_list(app: &App, area: Rect, frame: &mut Frame) {
         .block(
             Block::bordered()
                 .title(Line::from(" 📝 Todo List ").centered())
-                .border_set(border::DOUBLE),
+                .border_set(border::ROUNDED),
         )
         .highlight_style(
             Style::default()
@@ -91,7 +91,7 @@ fn draw_todo_list(app: &App, area: Rect, frame: &mut Frame) {
 fn draw_pomodoro(_app: &App, area: Rect, frame: &mut Frame) {
     let block = Block::bordered()
         .title(Line::from(" 🍅 Pomodoro ").centered())
-        .border_style(Style::default().fg(TokyoNight::ORANGE))
+        .border_style(Style::default().fg(TokyoNight::RED))
         .border_set(border::ROUNDED);
 
     let paragraph = Paragraph::new("番茄钟")
@@ -179,28 +179,71 @@ fn draw_create_task_window(
     let right_layout = Layout::vertical([Constraint::Percentage(40), Constraint::Percentage(60)]);
     let right_areas = right_layout.split(chunks[1]);
 
-    draw_todo(_app, left_areas[0], frame);
-    draw_desc(_app, left_areas[1], frame);
+    // 修改 draw_todo 函数显示输入框
+    draw_todo(_app, left_areas[0], title, current_field == 0, frame);
+    // 修改 draw_desc 函数显示输入框
+    draw_desc(_app, left_areas[1], description, current_field == 1, frame);
     draw_must_tag(_app, right_areas[0], frame);
     draw_diy_tag(_app, right_areas[1], frame);
 }
 
-fn draw_todo(_app: &App, area: Rect, frame: &mut Frame) {
-    let block = Block::bordered()
-        .title(Line::from(" 新的todo ").centered())
-        .border_set(border::ROUNDED)
-        .border_style(Style::default().fg(TokyoNight::RED));
+fn draw_todo(_app: &App, area: Rect, title: &str, is_active: bool, frame: &mut Frame) {
+    let border_style = if is_active {
+        Style::default().fg(TokyoNight::CYAN).bold()
+    } else {
+        Style::default().fg(TokyoNight::RED)
+    };
 
-    frame.render_widget(block, area);
+    let block = Block::bordered()
+        .title(Line::from(" 📝 新的todo ").centered())
+        .border_set(border::ROUNDED)
+        .border_style(border_style);
+
+    // 显示当前输入的内容
+    let display_text = if title.is_empty() {
+        "输入任务标题..."
+    } else {
+        title
+    };
+
+    let paragraph = Paragraph::new(display_text)
+        .block(block)
+        .style(if is_active {
+            Style::default().fg(Color::White).bg(TokyoNight::GRAY)
+        } else {
+            Style::default()
+        });
+
+    frame.render_widget(paragraph, area);
 }
 
-fn draw_desc(_app: &App, area: Rect, frame: &mut Frame) {
-    let block = Block::bordered()
-        .title(Line::from(" todo的详细信息 ").centered())
-        .border_set(border::ROUNDED)
-        .border_style(Style::default().fg(TokyoNight::RED));
+fn draw_desc(_app: &App, area: Rect, description: &str, is_active: bool, frame: &mut Frame) {
+    let border_style = if is_active {
+        Style::default().fg(TokyoNight::CYAN).bold()
+    } else {
+        Style::default().fg(TokyoNight::RED)
+    };
 
-    frame.render_widget(block, area);
+    let block = Block::bordered()
+        .title(Line::from(" 📋 todo的详细信息 ").centered())
+        .border_set(border::ROUNDED)
+        .border_style(border_style);
+
+    let display_text = if description.is_empty() {
+        "输入任务描述..."
+    } else {
+        description
+    };
+
+    let paragraph = Paragraph::new(display_text)
+        .block(block)
+        .style(if is_active {
+            Style::default().fg(Color::White).bg(TokyoNight::GRAY)
+        } else {
+            Style::default()
+        });
+
+    frame.render_widget(paragraph, area);
 }
 
 fn draw_must_tag(_app: &App, area: Rect, frame: &mut Frame) {
@@ -253,64 +296,162 @@ fn draw_pomodoro_settings_window(_app: &App, area: Rect, frame: &mut Frame) {
 
     // 下面就不切割了, 因为是音乐播放列表
 
-    draw_up_left(_app, up_areas[0], frame);
-    draw_up_right(_app, up_areas[1], frame);
-    draw_middle_left(_app, middle_areas[0], frame);
-    draw_middle_right(_app, middle_areas[1], frame);
-    draw_down(_app, rows[2], frame);
+    if let Some(window) = &_app.active_window {
+        if let WindowData::PomodoroSettings {
+            play_during_pomodoro,
+            play_on_finish,
+            selected_duration,
+            custom_duration,
+            current_focus,
+        } = &window.data
+        {
+            draw_up_left(
+                _app,
+                up_areas[0],
+                *play_during_pomodoro,
+                *current_focus == 0,
+                frame,
+            );
+            draw_up_right(
+                _app,
+                up_areas[1],
+                *play_on_finish,
+                *current_focus == 1,
+                frame,
+            );
+            draw_middle_left(
+                _app,
+                middle_areas[0],
+                *selected_duration,
+                *current_focus == 2,
+                frame,
+            );
+            draw_middle_right(
+                _app,
+                middle_areas[1],
+                custom_duration,
+                *current_focus == 3,
+                frame,
+            );
+            draw_down(_app, rows[2], *current_focus == 4, frame);
+        }
+    }
 }
 
-fn draw_up_left(_app: &App, area: Rect, frame: &mut Frame) {
+fn draw_up_left(_app: &App, area: Rect, enabled: bool, is_active: bool, frame: &mut Frame) {
+    let border_style = if is_active {
+        Style::default().fg(TokyoNight::CYAN).bold()
+    } else {
+        Style::default().fg(TokyoNight::RED)
+    };
+
     let block = Block::bordered()
-        .title(Line::from(" 是否在番茄钟运行时播放音乐? ").centered())
+        .title(Line::from(" 🎵 运行时播放音乐? ").centered())
         .border_set(border::ROUNDED)
-        .border_style(Style::default().fg(TokyoNight::RED));
+        .border_style(border_style);
 
-    frame.render_widget(block, area);
+    let status = if enabled { "✅ 是" } else { "❌ 否" };
+    let paragraph = Paragraph::new(status)
+        .block(block)
+        .alignment(ratatui::layout::Alignment::Center);
+
+    frame.render_widget(paragraph, area);
 }
 
-fn draw_up_right(_app: &App, area: Rect, frame: &mut Frame) {
+fn draw_up_right(_app: &App, area: Rect, enabled: bool, is_active: bool, frame: &mut Frame) {
+    let border_style = if is_active {
+        Style::default().fg(TokyoNight::CYAN).bold()
+    } else {
+        Style::default().fg(TokyoNight::RED)
+    };
+
     let block = Block::bordered()
-        .title(Line::from(" 是否在番茄钟结束时播放音乐? ").centered())
+        .title(Line::from(" ⏹️ 结束时播放音乐? ").centered())
         .border_set(border::ROUNDED)
-        .border_style(Style::default().fg(TokyoNight::RED));
+        .border_style(border_style);
 
-    frame.render_widget(block, area);
+    let status = if enabled { "✅ 是" } else { "❌ 否" };
+    let paragraph = Paragraph::new(status)
+        .block(block)
+        .alignment(ratatui::layout::Alignment::Center);
+
+    frame.render_widget(paragraph, area);
 }
 
-fn draw_middle_left(_app: &App, area: Rect, frame: &mut Frame) {
+fn draw_middle_left(_app: &App, area: Rect, selected: usize, is_active: bool, frame: &mut Frame) {
+    let border_style = if is_active {
+        Style::default().fg(TokyoNight::CYAN).bold()
+    } else {
+        Style::default().fg(TokyoNight::ORANGE)
+    };
+
     let block = Block::bordered()
-        .title(Line::from(" 常用番茄钟时间 ").centered())
+        .title(Line::from(" ⏱️ 常用番茄钟时间 ").centered())
         .border_set(border::ROUNDED)
-        .border_style(Style::default().fg(TokyoNight::ORANGE));
+        .border_style(border_style);
 
-    frame.render_widget(block, area);
+    let durations = ["15分钟", "20分钟", "25分钟", "30分钟", "45分钟"];
+    let items: Vec<ListItem> = durations
+        .iter()
+        .enumerate()
+        .map(|(i, d)| {
+            let prefix = if i == selected { "▶ " } else { "  " };
+            ListItem::new(Line::from(vec![prefix.into(), (*d).into()]))
+        })
+        .collect();
+
+    let list = List::new(items).block(block);
+    frame.render_widget(list, area);
 }
 
-fn draw_middle_right(_app: &App, area: Rect, frame: &mut Frame) {
+fn draw_middle_right(_app: &App, area: Rect, custom: &str, is_active: bool, frame: &mut Frame) {
+    let border_style = if is_active {
+        Style::default().fg(TokyoNight::CYAN).bold()
+    } else {
+        Style::default().fg(TokyoNight::ORANGE)
+    };
+
     let block = Block::bordered()
-        .title(Line::from(" 自定义番茄钟时间 ").centered())
+        .title(Line::from(" ✏️ 自定义时间(分钟) ").centered())
         .border_set(border::ROUNDED)
-        .border_style(Style::default().fg(TokyoNight::ORANGE));
+        .border_style(border_style);
 
-    frame.render_widget(block, area);
+    let display_text = if custom.is_empty() {
+        "输入数字..."
+    } else {
+        &custom[..]
+    };
+
+    let paragraph = Paragraph::new(display_text)
+        .block(block)
+        .alignment(ratatui::layout::Alignment::Center)
+        .style(if is_active {
+            Style::default().fg(Color::White).bg(TokyoNight::GRAY)
+        } else {
+            Style::default()
+        });
+
+    frame.render_widget(paragraph, area);
 }
 
-// 在 ui.rs 中
-fn draw_down(app: &App, area: Rect, frame: &mut Frame) {
+fn draw_down(app: &App, area: Rect, is_active: bool, frame: &mut Frame) {
+    let border_style = if is_active {
+        Style::default().fg(TokyoNight::CYAN).bold()
+    } else {
+        Style::default().fg(TokyoNight::CYAN)
+    };
+
     let block = Block::bordered()
         .title(Line::from(" 🎵 音乐播放列表 ").centered())
         .border_set(border::ROUNDED)
-        .border_style(Style::default().fg(TokyoNight::CYAN));
+        .border_style(border_style);
 
-    // 将音频文件转换为 ListItem
     let items: Vec<ListItem> = app
         .music_files
         .iter()
         .map(|file| ListItem::new(Line::from(vec![" 🎶 ".into(), file.name.clone().into()])))
         .collect();
 
-    // 创建列表组件
     let list = List::new(items)
         .block(block)
         .highlight_style(
@@ -321,6 +462,5 @@ fn draw_down(app: &App, area: Rect, frame: &mut Frame) {
         )
         .highlight_symbol("▶ ");
 
-    // 使用 music_list_state 进行有状态渲染
     frame.render_stateful_widget(list, area, &mut app.music_list_state.clone());
 }
