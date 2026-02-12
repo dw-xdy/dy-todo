@@ -434,6 +434,7 @@ fn draw_middle_right(_app: &App, area: Rect, custom: &str, is_active: bool, fram
     frame.render_widget(paragraph, area);
 }
 
+// 修改 draw_down 函数
 fn draw_down(app: &App, area: Rect, is_active: bool, frame: &mut Frame) {
     let border_style = if is_active {
         Style::default().fg(TokyoNight::CYAN).bold()
@@ -446,11 +447,51 @@ fn draw_down(app: &App, area: Rect, is_active: bool, frame: &mut Frame) {
         .border_set(border::ROUNDED)
         .border_style(border_style);
 
+    // 显示播放状态提示
+    let help_text = if is_active {
+        Line::from(vec![
+            " ↑/k ↓/j ".fg(TokyoNight::GRAY).into(),
+            " 选择 ".fg(Color::White).into(),
+            " Enter ".fg(TokyoNight::GRAY).into(),
+            " 播放 ".fg(Color::White).into(),
+            " Space ".fg(TokyoNight::GRAY).into(),
+            " 暂停/继续 ".fg(Color::White).into(),
+        ])
+    } else {
+        Line::from("")
+    };
+
+    // 构建列表项，显示播放状态
     let items: Vec<ListItem> = app
         .music_files
         .iter()
-        .map(|file| ListItem::new(Line::from(vec![" 🎶 ".into(), file.name.clone().into()])))
+        .enumerate()
+        .map(|(i, file)| {
+            let is_playing = app.music_player_state.current_playing_index == Some(i)
+                && app.music_player_state.playback_state == crate::models::PlaybackState::Playing;
+            let is_paused = app.music_player_state.current_playing_index == Some(i)
+                && app.music_player_state.playback_state == crate::models::PlaybackState::Paused;
+
+            let icon = if is_playing {
+                " ▶️ ".into()
+            } else if is_paused {
+                " ⏸️ ".into()
+            } else {
+                " 🎶 ".into()
+            };
+
+            ListItem::new(Line::from(vec![icon, file.name.clone().into()]))
+        })
         .collect();
+
+    // 如果音乐文件为空，显示提示信息
+    let items = if items.is_empty() {
+        vec![ListItem::new(Line::from(vec![
+            " 📭 没有找到音乐文件".into(),
+        ]))]
+    } else {
+        items
+    };
 
     let list = List::new(items)
         .block(block)
@@ -462,5 +503,20 @@ fn draw_down(app: &App, area: Rect, is_active: bool, frame: &mut Frame) {
         )
         .highlight_symbol("▶ ");
 
+    // 渲染列表
     frame.render_stateful_widget(list, area, &mut app.music_list_state.clone());
+
+    // 如果有帮助文本，在下方渲染
+    if is_active && !app.music_files.is_empty() {
+        let help_area = Rect {
+            x: area.x,
+            y: area.y + area.height - 2,
+            width: area.width,
+            height: 1,
+        };
+        frame.render_widget(
+            Paragraph::new(help_text).alignment(ratatui::layout::Alignment::Center),
+            help_area,
+        );
+    }
 }

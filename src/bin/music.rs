@@ -51,7 +51,7 @@ fn play_mp3_file(path: &Path) -> Result<(), Box<dyn std::error::Error>> {
         rodio::OutputStreamBuilder::open_default_stream().expect("open default audio stream");
 
     // 2. 创建 Sink。
-    let sink = rodio::Sink::connect_new(&stream_handle.mixer());
+    let sink = rodio::Sink::connect_new(stream_handle.mixer());
 
     // 3. 打开并解码
     let file = File::open(path)?;

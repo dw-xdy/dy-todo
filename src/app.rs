@@ -1,20 +1,35 @@
-use crate::models::{ActiveWindow, AudioFileInfo, TodoTask, WindowData, WindowLayout, WindowType};
+use crate::models::{
+    ActiveWindow, AudioFileInfo, MusicPlayerState, PlaybackState, TodoTask, WindowData,
+    WindowLayout, WindowType,
+};
 use crate::ui; // 引入 UI 渲染
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
 use ratatui::widgets::ScrollbarState; // 确保导入
 use ratatui::{DefaultTerminal, widgets::ListState};
+use rodio::{Decoder, OutputStream, Sink, Source};
+use std::fs::File;
 use std::io;
+use std::io::BufReader;
+use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
+use std::thread;
 use walkdir::WalkDir; // 确保 Cargo.toml 有 walkdir 依赖
 
 pub struct App {
     pub exit: bool,
     pub tasks: Vec<TodoTask>,
     pub list_state: ListState,
-    pub active_window: Option<ActiveWindow>, // 当前活动窗口（None 表示无窗口）
+    pub active_window: Option<ActiveWindow>,
     pub scroll_state: ScrollbarState,
     // 音乐
     pub music_files: Vec<AudioFileInfo>,
-    pub music_list_state: ListState, // 音乐列表的选中状态
+    pub music_list_state: ListState,
+    pub music_player_state: MusicPlayerState, // 新增
+    // 播放线程相关 - 适配新版 rodio
+    #[allow(dead_code)]
+    sink: Option<Arc<Mutex<Sink>>>,
+    #[allow(dead_code)]
+    stream_handle: Option<OutputStream>,
 }
 
 impl Default for App {
@@ -54,12 +69,14 @@ impl Default for App {
             exit: false,
             tasks,
             list_state,
-            scroll_state: ScrollbarState::new(tasks_len), // <--- 初始化
+            scroll_state: ScrollbarState::new(tasks_len),
             music_files: Vec::new(),
             music_list_state: ListState::default(),
+            music_player_state: MusicPlayerState::default(), // 初始化
             active_window: None,
+            sink: None,
+            stream_handle: None,
         };
-
         // 2. 在这里调用加载目录的代码
         // 建议：由于 "F:\\..." 是 Windows 路径，确保你的开发环境路径正确
         app.load_music_from_dir("F:\\D\\音乐\\音乐文件");
@@ -79,10 +96,10 @@ impl App {
     }
 
     fn handle_events(&mut self) -> io::Result<()> {
-        if let Event::Key(key) = event::read()? {
-            if key.kind == KeyEventKind::Press {
-                self.handle_key_event(key);
-            }
+        if let Event::Key(key) = event::read()?
+            && key.kind == KeyEventKind::Press
+        {
+            self.handle_key_event(key);
         }
         Ok(())
     }
@@ -93,14 +110,13 @@ impl App {
             // 2. 处理事件
             let handled = self.handle_window_key_event(&mut window, key);
 
-            // 3. 检查处理后的状态
-            // 如果内部调用了 close_window()，那么此时 self.active_window 依然是 None。
-            // 我们增加一个逻辑：只有当按键不是 Enter 且不是 Esc 时，才归还 window。
-            // 或者更严谨地：检查 handle_window_key_event 的意图。
-
+            // 3. 根据窗口类型和按键决定是否关闭
             let should_close = match key.code {
-                KeyCode::Enter => true, // 假设 Enter 总是提交并关闭
-                KeyCode::Esc => true,   // Esc 总是取消并关闭
+                KeyCode::Esc => true, // Esc 总是取消并关闭
+                KeyCode::Enter => {
+                    // 只有非番茄钟设置窗口的 Enter 才关闭
+                    !matches!(window.window_type, WindowType::PomodoroSettings)
+                }
                 _ => false,
             };
 
@@ -108,8 +124,7 @@ impl App {
                 // 如果不需要关闭，把窗口放回去
                 self.active_window = Some(window);
             } else {
-                // 如果是 Enter 或 Esc，我们就不执行赋值操作，
-                // 局部变量 window 会在作用域结束时被销毁，窗口也就彻底关闭了。
+                // 需要关闭窗口，局部变量 window 会在作用域结束时被销毁
                 return;
             }
 
@@ -117,12 +132,20 @@ impl App {
                 return;
             }
         }
+
         // 4. 全局快捷键逻辑 (当没有窗口或窗口未拦截事件时触发)
         match key.code {
             KeyCode::Char('q') => self.exit = true,
-            KeyCode::Char('j') | KeyCode::Down => self.next(),
-            KeyCode::Char('k') | KeyCode::Up => self.previous(),
-
+            KeyCode::Char('j') | KeyCode::Down => {
+                if self.active_window.is_none() {
+                    self.next();
+                }
+            }
+            KeyCode::Char('k') | KeyCode::Up => {
+                if self.active_window.is_none() {
+                    self.previous();
+                }
+            }
             // 快捷键打开不同窗口
             KeyCode::Char('n') => self.open_window(WindowType::CreateTask),
             KeyCode::Char('p') => self.open_window(WindowType::PomodoroSettings),
@@ -139,23 +162,20 @@ impl App {
                 current_field,
             } => {
                 match key.code {
-                    // Tab 切换输入字段
+                    // ... 保持原有代码不变 ...
                     KeyCode::Tab => {
                         *current_field = (*current_field + 1) % 2;
                         true
                     }
-                    // Enter 提交表单
                     KeyCode::Enter => {
                         self.create_task(title.clone(), description.clone());
                         self.close_window();
                         true
                     }
-                    // Esc 关闭窗口
                     KeyCode::Esc => {
                         self.close_window();
                         true
                     }
-                    // 字符输入
                     KeyCode::Char(c) => {
                         if *current_field == 0 {
                             title.push(c);
@@ -164,7 +184,6 @@ impl App {
                         }
                         true
                     }
-                    // 退格删除
                     KeyCode::Backspace => {
                         if *current_field == 0 {
                             title.pop();
@@ -173,7 +192,6 @@ impl App {
                         }
                         true
                     }
-                    // 空格键
                     KeyCode::Char(' ') => {
                         if *current_field == 0 {
                             title.push(' ');
@@ -182,7 +200,7 @@ impl App {
                         }
                         true
                     }
-                    _ => false, // 未处理的事件
+                    _ => false,
                 }
             }
             WindowData::PomodoroSettings {
@@ -194,31 +212,42 @@ impl App {
             } => {
                 match key.code {
                     KeyCode::Tab => {
-                        *current_focus = (*current_focus + 1) % 5; // 循环5个焦点区域
+                        *current_focus = (*current_focus + 1) % 5;
                         true
                     }
                     KeyCode::Enter => {
-                        // 保存设置
-                        self.save_pomodoro_settings(
-                            *play_during_pomodoro,
-                            *play_on_finish,
-                            *selected_duration,
-                            custom_duration.clone(),
-                        );
-                        self.close_window();
-                        true
+                        if *current_focus == 4 {
+                            // 在音乐列表按Enter播放选中的音乐
+                            self.play_selected_music();
+                            true
+                        } else {
+                            // 保存设置
+                            self.save_pomodoro_settings(
+                                *play_during_pomodoro,
+                                *play_on_finish,
+                                *selected_duration,
+                                custom_duration.clone(),
+                            );
+                            true
+                        }
                     }
                     KeyCode::Esc => {
                         self.close_window();
                         true
                     }
                     KeyCode::Char(' ') => {
-                        match *current_focus {
-                            0 => *play_during_pomodoro = !*play_during_pomodoro,
-                            1 => *play_on_finish = !*play_on_finish,
-                            _ => {}
+                        if *current_focus == 4 {
+                            // 在音乐列表按空格控制播放/暂停
+                            self.toggle_playback();
+                            true
+                        } else {
+                            match *current_focus {
+                                0 => *play_during_pomodoro = !*play_during_pomodoro,
+                                1 => *play_on_finish = !*play_on_finish,
+                                _ => {}
+                            }
+                            true
                         }
-                        true
                     }
                     KeyCode::Up | KeyCode::Char('k') => {
                         if *current_focus == 2 {
@@ -226,6 +255,9 @@ impl App {
                             if *selected_duration > 0 {
                                 *selected_duration -= 1;
                             }
+                        } else if *current_focus == 4 {
+                            // 音乐列表向上移动
+                            self.music_list_previous();
                         }
                         true
                     }
@@ -235,15 +267,15 @@ impl App {
                             if *selected_duration < 4 {
                                 *selected_duration += 1;
                             }
+                        } else if *current_focus == 4 {
+                            // 音乐列表向下移动
+                            self.music_list_next();
                         }
                         true
                     }
                     KeyCode::Char(c) => {
-                        if *current_focus == 3 {
-                            // 自定义时间输入
-                            if c.is_ascii_digit() {
-                                custom_duration.push(c);
-                            }
+                        if *current_focus == 3 && c.is_ascii_digit() {
+                            custom_duration.push(c);
                         }
                         true
                     }
@@ -258,6 +290,128 @@ impl App {
             }
             _ => false,
         }
+    }
+
+    // 新增：音乐列表向上移动
+    fn music_list_previous(&mut self) {
+        let i = match self.music_list_state.selected() {
+            Some(i) => {
+                if i == 0 {
+                    if self.music_files.is_empty() {
+                        0
+                    } else {
+                        self.music_files.len() - 1
+                    }
+                } else {
+                    i - 1
+                }
+            }
+            None => 0,
+        };
+        self.music_list_state.select(Some(i));
+    }
+
+    // 新增：音乐列表向下移动
+    fn music_list_next(&mut self) {
+        if self.music_files.is_empty() {
+            return;
+        }
+        let i = match self.music_list_state.selected() {
+            Some(i) => {
+                if i >= self.music_files.len() - 1 {
+                    0
+                } else {
+                    i + 1
+                }
+            }
+            None => 0,
+        };
+        self.music_list_state.select(Some(i));
+    }
+
+    // 新增：播放选中的音乐
+    pub fn play_selected_music(&mut self) {
+        if let Some(selected) = self.music_list_state.selected()
+            && selected < self.music_files.len()
+        {
+            let file_path = self.music_files[selected].path.clone();
+
+            // 停止当前播放
+            self.stop_music();
+
+            // 更新状态
+            self.music_player_state.current_playing_index = Some(selected);
+            self.music_player_state.playback_state = PlaybackState::Playing;
+
+            // 在新线程中播放音乐
+            let path = file_path.clone();
+            let volume = self.music_player_state.volume;
+
+            // 新版 rodio API：使用 OutputStreamBuilder
+            match rodio::OutputStreamBuilder::open_default_stream() {
+                Ok(stream_handle) => {
+                    // 创建 Sink，新版使用 connect_new 并传入 mixer
+                    let sink = rodio::Sink::connect_new(stream_handle.mixer());
+                    sink.set_volume(volume);
+
+                    match File::open(&path) {
+                        Ok(file) => {
+                            match Decoder::new(BufReader::new(file)) {
+                                Ok(source) => {
+                                    sink.append(source);
+
+                                    // 保存 sink 和 stream_handle 以便控制
+                                    self.sink = Some(Arc::new(Mutex::new(sink)));
+                                    self.stream_handle = Some(stream_handle);
+                                }
+                                Err(e) => {
+                                    eprintln!("无法解码音频文件: {}", e);
+                                    self.music_player_state.playback_state = PlaybackState::Stopped;
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            eprintln!("无法打开音频文件: {}", e);
+                            self.music_player_state.playback_state = PlaybackState::Stopped;
+                        }
+                    }
+                }
+                Err(e) => {
+                    eprintln!("无法打开音频输出: {}", e);
+                    self.music_player_state.playback_state = PlaybackState::Stopped;
+                }
+            }
+        }
+    }
+
+    // 新增：切换播放/暂停
+    pub fn toggle_playback(&mut self) {
+        if let Some(sink_arc) = &self.sink {
+            if let Ok(sink) = sink_arc.lock() {
+                if sink.is_paused() {
+                    sink.play();
+                    self.music_player_state.playback_state = PlaybackState::Playing;
+                } else {
+                    sink.pause();
+                    self.music_player_state.playback_state = PlaybackState::Paused;
+                }
+            }
+        } else if self.music_player_state.current_playing_index.is_some() {
+            // 如果有之前播放的索引但没有 sink，重新播放
+            self.play_selected_music();
+        }
+    }
+
+    // 新增：停止音乐
+    pub fn stop_music(&mut self) {
+        if let Some(sink) = self.sink.as_ref().and_then(|s| s.lock().ok()) {
+            sink.stop();
+        }
+
+        // 重置状态.
+        self.sink = None;
+        self.stream_handle = None; // 释放 stream_handle
+        self.music_player_state.playback_state = PlaybackState::Stopped;
     }
 
     /// 创建新任务
@@ -275,6 +429,7 @@ impl App {
     }
 
     /// 保存番茄钟设置
+    // TODO:
     fn save_pomodoro_settings(
         &mut self,
         play_during: bool,
@@ -366,18 +521,6 @@ impl App {
                 width: 80,
                 height: 21,
             },
-        }
-    }
-
-    /// 根据窗口类型获取默认数据p
-    fn get_window_data(&self, window_type: &WindowType) -> WindowData {
-        match window_type {
-            WindowType::CreateTask => WindowData::CreateTask {
-                title: String::new(),
-                description: String::new(),
-                current_field: 0,
-            },
-            _ => WindowData::Empty,
         }
     }
 

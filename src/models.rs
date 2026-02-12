@@ -82,3 +82,32 @@ pub enum WindowData {
     // 其他窗口类型的数据...
     Empty,
 }
+
+// 在现有代码后添加
+/// 音乐播放状态
+#[derive(Debug, Clone, PartialEq)]
+pub enum PlaybackState {
+    Playing,
+    Paused,
+    Stopped,
+}
+
+/// 音乐播放器状态
+#[derive(Debug, Clone)]
+pub struct MusicPlayerState {
+    pub current_playing_index: Option<usize>, // 当前播放的音乐索引
+    pub playback_state: PlaybackState,
+    pub current_position: Option<std::time::Duration>, // 当前播放位置（可选）
+    pub volume: f32,                                   // 音量 0.0-1.0
+}
+
+impl Default for MusicPlayerState {
+    fn default() -> Self {
+        Self {
+            current_playing_index: None,
+            playback_state: PlaybackState::Stopped,
+            current_position: None,
+            volume: 0.8,
+        }
+    }
+}
