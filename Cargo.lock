@@ -453,6 +453,7 @@ dependencies = [
  "crossterm",
  "ratatui",
  "rodio",
+ "time",
  "walkdir",
 ]
 
