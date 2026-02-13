@@ -180,7 +180,7 @@ fn draw_desc(app: &App, area: Rect, description: &str, is_active: bool, frame: &
         }
     }
 
-    // **再创建 Paragraph**（这里会消耗 display_text）
+    // 再创建 Paragraph (这里会消耗 display_text）
     let paragraph = Paragraph::new(display_text)
         .block(block)
         .style(if is_active {
@@ -222,20 +222,23 @@ fn draw_todo_list(app: &App, area: Rect, frame: &mut Frame) {
 
     // 2. 渲染滚动条
     // 我们创建一个垂直滚动条，放在区域的右侧
-    let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
-        .track_symbol(Some("░"))
-        .thumb_symbol("█");
+    let visible_height = area.height.saturating_sub(2) as usize; // 减去边框
+    if app.tasks.len() > visible_height {
+        let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
+            .track_symbol(Some("░"))
+            .thumb_symbol("█");
 
-    // 渲染滚动条需要它的状态
-    // 我们通常在 block 内部渲染它，所以可以用 area
-    frame.render_stateful_widget(
-        scrollbar,
-        area.inner(ratatui::layout::Margin {
-            vertical: 1,
-            horizontal: 0,
-        }), // 稍微内缩，避免压住边框
-        &mut app.scroll_state.clone(),
-    );
+        // 渲染滚动条需要它的状态
+        // 我们通常在 block 内部渲染它，所以可以用 area
+        frame.render_stateful_widget(
+            scrollbar,
+            area.inner(ratatui::layout::Margin {
+                vertical: 1,
+                horizontal: 0,
+            }), // 稍微内缩，避免压住边框
+            &mut app.scroll_state.clone(),
+        );
+    }
 }
 
 fn draw_pomodoro(_app: &App, area: Rect, frame: &mut Frame) {
@@ -602,9 +605,7 @@ fn draw_down(app: &App, area: Rect, is_active: bool, frame: &mut Frame) {
     if app.music_files.len() > visible_height {
         let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
             .track_symbol(Some("░"))
-            .thumb_symbol("█")
-            .begin_symbol(Some("↑"))
-            .end_symbol(Some("↓"));
+            .thumb_symbol("█");
 
         // 克隆滚动条状态
         let mut music_scroll_state = app.music_scroll_state;
