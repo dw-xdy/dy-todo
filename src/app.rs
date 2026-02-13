@@ -173,49 +173,102 @@ impl App {
                 title,
                 description,
                 current_field,
-            } => {
-                match key.code {
-                    // ... 保持原有代码不变 ...
-                    KeyCode::Tab => {
-                        *current_field = (*current_field + 1) % 2;
-                        true
-                    }
-                    KeyCode::Enter => {
-                        self.create_task(title.clone(), description.clone());
-                        self.close_window();
-                        true
-                    }
-                    KeyCode::Esc => {
-                        self.close_window();
-                        true
-                    }
-                    KeyCode::Char(c) => {
-                        if *current_field == 0 {
-                            title.push(c);
-                        } else {
-                            description.push(c);
-                        }
-                        true
-                    }
-                    KeyCode::Backspace => {
-                        if *current_field == 0 {
-                            title.pop();
-                        } else {
-                            description.pop();
-                        }
-                        true
-                    }
-                    KeyCode::Char(' ') => {
-                        if *current_field == 0 {
-                            title.push(' ');
-                        } else {
-                            description.push(' ');
-                        }
-                        true
-                    }
-                    _ => false,
+                cursor_position, // 新增
+            } => match key.code {
+                KeyCode::Tab => {
+                    *current_field = (*current_field + 1) % 2;
+                    // 切换字段时重置光标位置
+                    *cursor_position = if *current_field == 0 {
+                        title.len()
+                    } else {
+                        description.len()
+                    };
+                    true
                 }
-            }
+                KeyCode::Enter => {
+                    self.create_task(title.clone(), description.clone());
+                    self.close_window();
+                    true
+                }
+                KeyCode::Esc => {
+                    self.close_window();
+                    true
+                }
+                KeyCode::Left => {
+                    if *cursor_position > 0 {
+                        *cursor_position -= 1;
+                    }
+                    true
+                }
+                KeyCode::Right => {
+                    let max_len = if *current_field == 0 {
+                        title.len()
+                    } else {
+                        description.len()
+                    };
+                    if *cursor_position < max_len {
+                        *cursor_position += 1;
+                    }
+                    true
+                }
+                KeyCode::Home => {
+                    *cursor_position = 0;
+                    true
+                }
+                KeyCode::End => {
+                    *cursor_position = if *current_field == 0 {
+                        title.len()
+                    } else {
+                        description.len()
+                    };
+                    true
+                }
+                KeyCode::Char(c) => {
+                    let text = if *current_field == 0 {
+                        title
+                    } else {
+                        description
+                    };
+                    text.insert(*cursor_position, c);
+                    *cursor_position += 1;
+                    true
+                }
+                KeyCode::Backspace => {
+                    if *cursor_position > 0 {
+                        let text = if *current_field == 0 {
+                            title
+                        } else {
+                            description
+                        };
+                        text.remove(*cursor_position - 1);
+                        *cursor_position -= 1;
+                    }
+                    true
+                }
+                KeyCode::Delete => {
+                    let text = if *current_field == 0 {
+                        title
+                    } else {
+                        description
+                    };
+                    if *cursor_position < text.len() {
+                        text.remove(*cursor_position);
+                    }
+                    true
+                }
+                KeyCode::Char(' ') => {
+                    let text = if *current_field == 0 {
+                        title
+                    } else {
+                        description
+                    };
+                    text.insert(*cursor_position, ' ');
+                    *cursor_position += 1;
+                    true
+                }
+                _ => false,
+            },
+
             WindowData::PomodoroSettings {
                 play_during_pomodoro,
                 play_on_finish,
@@ -463,6 +516,7 @@ impl App {
                 title: String::new(),
                 description: String::new(),
                 current_field: 0,
+                cursor_position: 0, // 新增
             },
             WindowType::PomodoroSettings => WindowData::PomodoroSettings {
                 play_during_pomodoro: false,

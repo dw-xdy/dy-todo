@@ -1,8 +1,8 @@
 use crate::app::App;
-use crate::models::{ActiveWindow, TokyoNight, WindowData, WindowType, PlaybackState};
+use crate::models::{ActiveWindow, PlaybackState, TokyoNight, WindowData, WindowType};
 use ratatui::{
     Frame,
-    layout::{Constraint, Layout, Rect},
+    layout::{Constraint, Layout, Position, Rect},
     style::Color,
     style::{Style, Stylize},
     symbols::border,
@@ -39,6 +39,157 @@ fn draw_search(_app: &App, area: Rect, frame: &mut Frame) {
         .border_style(Style::default().fg(TokyoNight::MAGENTA))
         .border_set(border::ROUNDED);
     frame.render_widget(Paragraph::new("输入关键词搜索...").block(block), area);
+}
+
+fn draw_todo(app: &App, area: Rect, title: &str, is_active: bool, frame: &mut Frame) {
+    let border_style = if is_active {
+        Style::default().fg(TokyoNight::CYAN).bold()
+    } else {
+        Style::default().fg(TokyoNight::RED)
+    };
+
+    let block = Block::bordered()
+        .title(Line::from(" 📝 新的todo ").centered())
+        .border_set(border::ROUNDED)
+        .border_style(border_style);
+
+    // 获取光标位置
+    let cursor_pos = if is_active {
+        if let Some(window) = &app.active_window {
+            if let WindowData::CreateTask {
+                cursor_position,
+                current_field,
+                ..
+            } = &window.data
+            {
+                if *current_field == 0 {
+                    Some(*cursor_position)
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
+    // 构建显示文本
+    let display_text = if title.is_empty() {
+        if is_active {
+            " ".to_string() // 空文本时显示一个空格让光标可见
+        } else {
+            "输入任务标题...".to_string()
+        }
+    } else {
+        title.to_string()
+    };
+
+    // **先设置光标位置**（使用 display_text 的引用）
+    if let Some(pos) = cursor_pos {
+        // 计算光标的屏幕位置
+        let visible_start = if pos > area.width as usize - 3 {
+            pos.saturating_sub(area.width as usize - 3)
+        } else {
+            0
+        };
+
+        let cursor_x = area.x + 1 + (pos - visible_start) as u16;
+        let cursor_y = area.y + 1;
+
+        if cursor_x < area.x + area.width - 1 {
+            frame.set_cursor_position(Position::new(cursor_x, cursor_y));
+        }
+    }
+
+    // **再渲染 Paragraph**（这里会消耗 display_text）
+    let paragraph = Paragraph::new(display_text)
+        .block(block)
+        .style(if is_active {
+            Style::default().fg(Color::White).bg(TokyoNight::GRAY)
+        } else {
+            Style::default()
+        });
+
+    frame.render_widget(paragraph, area);
+}
+
+fn draw_desc(app: &App, area: Rect, description: &str, is_active: bool, frame: &mut Frame) {
+    let border_style = if is_active {
+        Style::default().fg(TokyoNight::CYAN).bold()
+    } else {
+        Style::default().fg(TokyoNight::RED)
+    };
+
+    let block = Block::bordered()
+        .title(Line::from(" 📋 todo的详细信息 ").centered())
+        .border_set(border::ROUNDED)
+        .border_style(border_style);
+
+    // 获取光标位置
+    let cursor_pos = if is_active {
+        if let Some(window) = &app.active_window {
+            if let WindowData::CreateTask {
+                cursor_position,
+                current_field,
+                ..
+            } = &window.data
+            {
+                if *current_field == 1 {
+                    Some(*cursor_position)
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
+    // 构建显示文本
+    let display_text = if description.is_empty() {
+        if is_active {
+            " ".to_string()
+        } else {
+            "输入任务描述...".to_string()
+        }
+    } else {
+        description.to_string()
+    };
+
+    // **先计算光标位置**（使用 display_text 的引用）
+    if let Some(pos) = cursor_pos {
+        let visible_start = if pos > area.width as usize - 3 {
+            pos.saturating_sub(area.width as usize - 3)
+        } else {
+            0
+        };
+
+        let cursor_x = area.x + 1 + (pos - visible_start) as u16;
+        let cursor_y = area.y + 1;
+
+        if cursor_x < area.x + area.width - 1 {
+            frame.set_cursor_position(Position::new(cursor_x, cursor_y));
+        }
+    }
+
+    // **再创建 Paragraph**（这里会消耗 display_text）
+    let paragraph = Paragraph::new(display_text)
+        .block(block)
+        .style(if is_active {
+            Style::default().fg(Color::White).bg(TokyoNight::GRAY)
+        } else {
+            Style::default()
+        });
+
+    frame.render_widget(paragraph, area);
 }
 
 fn draw_todo_list(app: &App, area: Rect, frame: &mut Frame) {
@@ -131,6 +282,7 @@ fn draw_window(_app: &App, window: &ActiveWindow, frame: &mut Frame) {
                 title,
                 description,
                 current_field,
+                cursor_position,
             },
         ) => {
             draw_create_task_window(_app, area, title, description, *current_field, frame);
@@ -184,65 +336,6 @@ fn draw_create_task_window(
     draw_desc(_app, left_areas[1], description, current_field == 1, frame);
     draw_must_tag(_app, right_areas[0], frame);
     draw_diy_tag(_app, right_areas[1], frame);
-}
-
-fn draw_todo(_app: &App, area: Rect, title: &str, is_active: bool, frame: &mut Frame) {
-    let border_style = if is_active {
-        Style::default().fg(TokyoNight::CYAN).bold()
-    } else {
-        Style::default().fg(TokyoNight::RED)
-    };
-
-    let block = Block::bordered()
-        .title(Line::from(" 📝 新的todo ").centered())
-        .border_set(border::ROUNDED)
-        .border_style(border_style);
-
-    // 显示当前输入的内容
-    let display_text = if title.is_empty() {
-        "输入任务标题..."
-    } else {
-        title
-    };
-
-    let paragraph = Paragraph::new(display_text)
-        .block(block)
-        .style(if is_active {
-            Style::default().fg(Color::White).bg(TokyoNight::GRAY)
-        } else {
-            Style::default()
-        });
-
-    frame.render_widget(paragraph, area);
-}
-
-fn draw_desc(_app: &App, area: Rect, description: &str, is_active: bool, frame: &mut Frame) {
-    let border_style = if is_active {
-        Style::default().fg(TokyoNight::CYAN).bold()
-    } else {
-        Style::default().fg(TokyoNight::RED)
-    };
-
-    let block = Block::bordered()
-        .title(Line::from(" 📋 todo的详细信息 ").centered())
-        .border_set(border::ROUNDED)
-        .border_style(border_style);
-
-    let display_text = if description.is_empty() {
-        "输入任务描述..."
-    } else {
-        description
-    };
-
-    let paragraph = Paragraph::new(display_text)
-        .block(block)
-        .style(if is_active {
-            Style::default().fg(Color::White).bg(TokyoNight::GRAY)
-        } else {
-            Style::default()
-        });
-
-    frame.render_widget(paragraph, area);
 }
 
 fn draw_must_tag(_app: &App, area: Rect, frame: &mut Frame) {
@@ -417,7 +510,7 @@ fn draw_middle_right(_app: &App, area: Rect, custom: &str, is_active: bool, fram
     let display_text = if custom.is_empty() {
         "输入数字..."
     } else {
-        &custom[..]
+        custom
     };
 
     let paragraph = Paragraph::new(display_text)
@@ -444,14 +537,14 @@ fn draw_down(app: &App, area: Rect, is_active: bool, frame: &mut Frame) {
         .border_set(border::ROUNDED)
         .border_style(border_style);
 
-    // 显示播放状态提示
+    // 显示播放状态提示 - 彩虹色
     let help_text = if is_active {
         Line::from(vec![
-            " ↑/k ↓/j ".fg(TokyoNight::GRAY),
+            " ↑/k ↓/j ".fg(Color::Rgb(255, 200, 100)), // 暖黄
             " 选择 ".fg(Color::White),
-            " Enter ".fg(TokyoNight::GRAY),
+            " Enter ".fg(Color::Rgb(100, 255, 100)), // 亮绿
             " 播放 ".fg(Color::White),
-            " Space ".fg(TokyoNight::GRAY),
+            " Space ".fg(Color::Rgb(100, 200, 255)), // 天蓝
             " 暂停/继续 ".fg(Color::White),
         ])
     } else {
@@ -532,7 +625,7 @@ fn draw_down(app: &App, area: Rect, is_active: bool, frame: &mut Frame) {
     if is_active && !app.music_files.is_empty() {
         let help_area = Rect {
             x: area.x,
-            y: area.y + area.height - 2,
+            y: area.y + area.height - 1, // 放在列表的最后一行
             width: area.width,
             height: 1,
         };

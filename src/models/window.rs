@@ -27,6 +27,7 @@ pub enum WindowData {
         title: String,
         description: String,
         current_field: usize,
+        cursor_position: usize,
     },
     PomodoroSettings {
         play_during_pomodoro: bool,
