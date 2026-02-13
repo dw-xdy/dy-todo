@@ -1,9 +1,9 @@
-mod theme;
-mod task;
-mod window;
 mod music;
+mod task;
+mod theme;
+mod window;
 
-pub use theme::*;
-pub use task::*;
-pub use window::*;
 pub use music::*;
+pub use task::*;
+pub use theme::*;
+pub use window::*;

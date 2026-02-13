@@ -1,5 +1,5 @@
 use crate::models::{
-    // 标签相关（如果需要）
+    // 标签相关
     // Tag,
 
     // 窗口相关
@@ -16,15 +16,14 @@ use crate::models::{
 };
 use crate::ui; // 引入 UI 渲染
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
+// 滚动条
 use ratatui::widgets::ScrollbarState; // 确保导入
 use ratatui::{DefaultTerminal, widgets::ListState};
-use rodio::{Decoder, OutputStream, Sink, Source};
+use rodio::{Decoder, OutputStream, Sink};
 use std::fs::File;
 use std::io;
 use std::io::BufReader;
-use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
-use std::thread;
 use walkdir::WalkDir; // 确保 Cargo.toml 有 walkdir 依赖
 
 pub struct App {
@@ -34,6 +33,7 @@ pub struct App {
     pub active_window: Option<ActiveWindow>,
     pub scroll_state: ScrollbarState,
     // 音乐
+    pub music_scroll_state: ScrollbarState, // 新增：音乐列表滚动条
     pub music_files: Vec<AudioFileInfo>,
     pub music_list_state: ListState,
     pub music_player_state: MusicPlayerState, // 新增
@@ -82,6 +82,7 @@ impl Default for App {
             tasks,
             list_state,
             scroll_state: ScrollbarState::new(tasks_len),
+            music_scroll_state: ScrollbarState::default(), // 初始化
             music_files: Vec::new(),
             music_list_state: ListState::default(),
             music_player_state: MusicPlayerState::default(), // 初始化
@@ -321,6 +322,7 @@ impl App {
             None => 0,
         };
         self.music_list_state.select(Some(i));
+        self.music_scroll_state = self.music_scroll_state.position(i); // 更新滚动条
     }
 
     // 新增：音乐列表向下移动
@@ -339,6 +341,7 @@ impl App {
             None => 0,
         };
         self.music_list_state.select(Some(i));
+        self.music_scroll_state = self.music_scroll_state.position(i); // 更新滚动条
     }
 
     // 新增：播放选中的音乐
@@ -377,19 +380,19 @@ impl App {
                                     self.stream_handle = Some(stream_handle);
                                 }
                                 Err(e) => {
-                                    eprintln!("无法解码音频文件: {}", e);
+                                    eprintln!("无法解码音频文件: {e}");
                                     self.music_player_state.playback_state = PlaybackState::Stopped;
                                 }
                             }
                         }
                         Err(e) => {
-                            eprintln!("无法打开音频文件: {}", e);
+                            eprintln!("无法打开音频文件: {e}");
                             self.music_player_state.playback_state = PlaybackState::Stopped;
                         }
                     }
                 }
                 Err(e) => {
-                    eprintln!("无法打开音频输出: {}", e);
+                    eprintln!("无法打开音频输出: {e}");
                     self.music_player_state.playback_state = PlaybackState::Stopped;
                 }
             }
@@ -548,7 +551,7 @@ impl App {
         {
             let path = entry.path();
             if path.is_file()
-                && path.extension().map_or(false, |ext| {
+                && path.extension().is_some_and(|ext| {
                     let ext_str = ext.to_ascii_lowercase();
                     ext_str == "mp3" || ext_str == "wav"
                 })
@@ -564,12 +567,16 @@ impl App {
             }
         }
 
-        files.sort_by(|a, b| a.name.cmp(&b.name)); // 排序
+        files.sort_by(|a, b| a.name.cmp(&b.name));
         self.music_files = files;
+
+        // 更新音乐列表滚动条状态
+        self.music_scroll_state = ScrollbarState::new(self.music_files.len());
 
         // 如果有文件，默认选中第一个
         if !self.music_files.is_empty() {
             self.music_list_state.select(Some(0));
+            self.music_scroll_state = self.music_scroll_state.position(0);
         }
     }
 }

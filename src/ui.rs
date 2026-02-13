@@ -1,5 +1,5 @@
 use crate::app::App;
-use crate::models::{ActiveWindow, TokyoNight, WindowData, WindowType};
+use crate::models::{ActiveWindow, TokyoNight, WindowData, WindowType, PlaybackState};
 use ratatui::{
     Frame,
     layout::{Constraint, Layout, Rect},
@@ -9,7 +9,6 @@ use ratatui::{
     text::Line,
     widgets::{Block, Clear, List, ListItem, Paragraph, Scrollbar, ScrollbarOrientation},
 };
-use std::net::IpAddr;
 
 pub fn render(app: &App, frame: &mut Frame) {
     let area = frame.area();
@@ -296,45 +295,44 @@ fn draw_pomodoro_settings_window(_app: &App, area: Rect, frame: &mut Frame) {
 
     // 下面就不切割了, 因为是音乐播放列表
 
-    if let Some(window) = &_app.active_window {
-        if let WindowData::PomodoroSettings {
+    if let Some(window) = &_app.active_window
+        && let WindowData::PomodoroSettings {
             play_during_pomodoro,
             play_on_finish,
             selected_duration,
             custom_duration,
             current_focus,
         } = &window.data
-        {
-            draw_up_left(
-                _app,
-                up_areas[0],
-                *play_during_pomodoro,
-                *current_focus == 0,
-                frame,
-            );
-            draw_up_right(
-                _app,
-                up_areas[1],
-                *play_on_finish,
-                *current_focus == 1,
-                frame,
-            );
-            draw_middle_left(
-                _app,
-                middle_areas[0],
-                *selected_duration,
-                *current_focus == 2,
-                frame,
-            );
-            draw_middle_right(
-                _app,
-                middle_areas[1],
-                custom_duration,
-                *current_focus == 3,
-                frame,
-            );
-            draw_down(_app, rows[2], *current_focus == 4, frame);
-        }
+    {
+        draw_up_left(
+            _app,
+            up_areas[0],
+            *play_during_pomodoro,
+            *current_focus == 0,
+            frame,
+        );
+        draw_up_right(
+            _app,
+            up_areas[1],
+            *play_on_finish,
+            *current_focus == 1,
+            frame,
+        );
+        draw_middle_left(
+            _app,
+            middle_areas[0],
+            *selected_duration,
+            *current_focus == 2,
+            frame,
+        );
+        draw_middle_right(
+            _app,
+            middle_areas[1],
+            custom_duration,
+            *current_focus == 3,
+            frame,
+        );
+        draw_down(_app, rows[2], *current_focus == 4, frame);
     }
 }
 
@@ -434,7 +432,6 @@ fn draw_middle_right(_app: &App, area: Rect, custom: &str, is_active: bool, fram
     frame.render_widget(paragraph, area);
 }
 
-// 修改 draw_down 函数
 fn draw_down(app: &App, area: Rect, is_active: bool, frame: &mut Frame) {
     let border_style = if is_active {
         Style::default().fg(TokyoNight::CYAN).bold()
@@ -450,12 +447,12 @@ fn draw_down(app: &App, area: Rect, is_active: bool, frame: &mut Frame) {
     // 显示播放状态提示
     let help_text = if is_active {
         Line::from(vec![
-            " ↑/k ↓/j ".fg(TokyoNight::GRAY).into(),
-            " 选择 ".fg(Color::White).into(),
-            " Enter ".fg(TokyoNight::GRAY).into(),
-            " 播放 ".fg(Color::White).into(),
-            " Space ".fg(TokyoNight::GRAY).into(),
-            " 暂停/继续 ".fg(Color::White).into(),
+            " ↑/k ↓/j ".fg(TokyoNight::GRAY),
+            " 选择 ".fg(Color::White),
+            " Enter ".fg(TokyoNight::GRAY),
+            " 播放 ".fg(Color::White),
+            " Space ".fg(TokyoNight::GRAY),
+            " 暂停/继续 ".fg(Color::White),
         ])
     } else {
         Line::from("")
@@ -468,9 +465,9 @@ fn draw_down(app: &App, area: Rect, is_active: bool, frame: &mut Frame) {
         .enumerate()
         .map(|(i, file)| {
             let is_playing = app.music_player_state.current_playing_index == Some(i)
-                && app.music_player_state.playback_state == crate::models::PlaybackState::Playing;
+                && app.music_player_state.playback_state == PlaybackState::Playing;
             let is_paused = app.music_player_state.current_playing_index == Some(i)
-                && app.music_player_state.playback_state == crate::models::PlaybackState::Paused;
+                && app.music_player_state.playback_state == PlaybackState::Paused;
 
             let icon = if is_playing {
                 " ▶️ ".into()
@@ -503,10 +500,35 @@ fn draw_down(app: &App, area: Rect, is_active: bool, frame: &mut Frame) {
         )
         .highlight_symbol("▶ ");
 
-    // 渲染列表
+    // 步骤1：先渲染列表
     frame.render_stateful_widget(list, area, &mut app.music_list_state.clone());
 
-    // 如果有帮助文本，在下方渲染
+    // 步骤2：再渲染滚动条（在列表上方）
+    // 只有当音乐文件数量大于可见行数时才显示滚动条
+    let visible_height = area.height.saturating_sub(2) as usize; // 减去边框
+    if app.music_files.len() > visible_height {
+        let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
+            .track_symbol(Some("░"))
+            .thumb_symbol("█")
+            .begin_symbol(Some("↑"))
+            .end_symbol(Some("↓"));
+
+        // 克隆滚动条状态
+        let mut music_scroll_state = app.music_scroll_state;
+
+        // 滚动条区域：在列表内部右侧
+        // 注意：x坐标需要是 area.x + area.width - 2（右边留2列）
+        let scrollbar_area = Rect {
+            x: area.x + area.width - 2, // 从右边第2列开始
+            y: area.y + 1,              // 顶部留1行给边框
+            width: 1,                   // 宽度1列
+            height: area.height - 2,    // 高度减去上下边框
+        };
+
+        frame.render_stateful_widget(scrollbar, scrollbar_area, &mut music_scroll_state);
+    }
+
+    // 步骤3：渲染帮助文本
     if is_active && !app.music_files.is_empty() {
         let help_area = Rect {
             x: area.x,
