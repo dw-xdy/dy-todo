@@ -30,8 +30,8 @@ pub enum WindowData {
         cursor_position: usize,
     },
     PomodoroSettings {
-        play_during_pomodoro: bool,
-        play_on_finish: bool,
+        // play_during_pomodoro: bool,
+        // play_on_finish: bool,
         selected_duration: usize,
         custom_duration: String,
         current_focus: usize,

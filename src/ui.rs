@@ -1,17 +1,18 @@
 use crate::app::App;
-use crate::models::{ActiveWindow, PlaybackState, TokyoNight, WindowData, WindowType};
+use crate::models::{ActiveWindow, PlaybackState, TaskStatus, TokyoNight, WindowData, WindowType};
+use chrono::{Utc};
 use ratatui::{
     Frame,
     layout::{Constraint, Layout, Position, Rect},
-    style::Color,
-    style::{Style, Stylize},
+    style::{Color, Style, Stylize},
     symbols::border,
-    text::Line,
+    text::{Line, Span},
     widgets::{Block, Clear, List, ListItem, Paragraph, Scrollbar, ScrollbarOrientation},
 };
 
 pub fn render(app: &App, frame: &mut Frame) {
     let area = frame.area();
+    // 竖着进行分割, 分割成三份
     let main_layout = Layout::horizontal([
         Constraint::Percentage(15),
         Constraint::Percentage(55),
@@ -88,7 +89,7 @@ fn draw_todo(app: &App, area: Rect, title: &str, is_active: bool, frame: &mut Fr
         title.to_string()
     };
 
-    // **先设置光标位置**（使用 display_text 的引用）
+    // 先设置光标位置（使用 display_text 的引用）
     if let Some(pos) = cursor_pos {
         // 计算光标的屏幕位置
         let visible_start = if pos > area.width as usize - 3 {
@@ -105,7 +106,7 @@ fn draw_todo(app: &App, area: Rect, title: &str, is_active: bool, frame: &mut Fr
         }
     }
 
-    // **再渲染 Paragraph**（这里会消耗 display_text）
+    // 再渲染 Paragraph（这里会消耗 display_text）
     let paragraph = Paragraph::new(display_text)
         .block(block)
         .style(if is_active {
@@ -164,7 +165,7 @@ fn draw_desc(app: &App, area: Rect, description: &str, is_active: bool, frame: &
         description.to_string()
     };
 
-    // **先计算光标位置**（使用 display_text 的引用）
+    // 先计算光标位置（使用 display_text 的引用）
     if let Some(pos) = cursor_pos {
         let visible_start = if pos > area.width as usize - 3 {
             pos.saturating_sub(area.width as usize - 3)
@@ -193,13 +194,48 @@ fn draw_desc(app: &App, area: Rect, description: &str, is_active: bool, frame: &
 }
 
 fn draw_todo_list(app: &App, area: Rect, frame: &mut Frame) {
-    // 1. 原有的渲染列表逻辑 ( 保持不变 )
+    // 1. 使用 status 枚举获取图标
     let items: Vec<ListItem> = app
         .tasks
         .iter()
         .map(|task| {
-            let status = if task.is_completed { " ✅ " } else { " ❌ " };
-            ListItem::new(Line::from(vec![status.into(), task.title.clone().into()]))
+            // 使用 status.icon() 获取对应的图标
+            let status_icon = task.status.icon();
+            
+            // 可以根据状态设置不同颜色（可选）
+            let icon_color = match task.status {
+                TaskStatus::Completed => Color::Green,
+                TaskStatus::Todo => Color::White,
+                TaskStatus::Overdue => Color::Red,
+                TaskStatus::DueToday => Color::Yellow,
+            };
+            
+            // 创建带颜色的图标和标题
+            let icon_span = Span::styled(
+                format!(" {} ", status_icon),
+                Style::default().fg(icon_color)
+            );
+            
+            let title_span = Span::raw(task.title.clone());
+            
+            // 如果有截止日期，添加额外信息（可选）
+            let due_info = if let Some(due) = task.due_date {
+                let now = Utc::now();
+                let days = (due - now).num_days();
+                if days > 0 && task.status != TaskStatus::Completed {
+                    format!(" ({}d)", days)
+                } else if days == 0 && task.status != TaskStatus::Completed {
+                    " (今天)".to_string()
+                } else {
+                    String::new()
+                }
+            } else {
+                String::new()
+            };
+            
+            let due_span = Span::raw(due_info);
+            
+            ListItem::new(Line::from(vec![icon_span, title_span, due_span]))
         })
         .collect();
 
@@ -221,21 +257,18 @@ fn draw_todo_list(app: &App, area: Rect, frame: &mut Frame) {
     frame.render_stateful_widget(list, area, &mut app.list_state.clone());
 
     // 2. 渲染滚动条
-    // 我们创建一个垂直滚动条，放在区域的右侧
-    let visible_height = area.height.saturating_sub(2) as usize; // 减去边框
+    let visible_height = area.height.saturating_sub(2) as usize;
     if app.tasks.len() > visible_height {
         let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
             .track_symbol(Some("░"))
             .thumb_symbol("█");
 
-        // 渲染滚动条需要它的状态
-        // 我们通常在 block 内部渲染它，所以可以用 area
         frame.render_stateful_widget(
             scrollbar,
             area.inner(ratatui::layout::Margin {
                 vertical: 1,
                 horizontal: 0,
-            }), // 稍微内缩，避免压住边框
+            }),
             &mut app.scroll_state.clone(),
         );
     }
@@ -318,7 +351,7 @@ fn draw_create_task_window(
         .bg(Color::Rgb(20, 20, 40)); // 深色背景
 
     let inner_area = block.inner(area);
-    frame.render_widget(block.clone(), area);
+    frame.render_widget(block, area);
 
     // 分割窗口内部区域
     let layout = Layout::horizontal([
@@ -330,24 +363,11 @@ fn draw_create_task_window(
     let left_layout = Layout::vertical([Constraint::Percentage(30), Constraint::Percentage(70)]);
     let left_areas = left_layout.split(chunks[0]);
 
-    let right_layout = Layout::vertical([Constraint::Percentage(40), Constraint::Percentage(60)]);
-    let right_areas = right_layout.split(chunks[1]);
-
     // 修改 draw_todo 函数显示输入框
     draw_todo(_app, left_areas[0], title, current_field == 0, frame);
     // 修改 draw_desc 函数显示输入框
     draw_desc(_app, left_areas[1], description, current_field == 1, frame);
-    draw_must_tag(_app, right_areas[0], frame);
-    draw_diy_tag(_app, right_areas[1], frame);
-}
-
-fn draw_must_tag(_app: &App, area: Rect, frame: &mut Frame) {
-    let block = Block::bordered()
-        .title(Line::from(" 必选的标签 ").centered())
-        .border_set(border::ROUNDED)
-        .border_style(Style::default().fg(TokyoNight::ORANGE));
-
-    frame.render_widget(block, area);
+    draw_diy_tag(_app, chunks[1], frame);
 }
 
 fn draw_diy_tag(_app: &App, area: Rect, frame: &mut Frame) {
@@ -373,106 +393,53 @@ fn draw_pomodoro_settings_window(_app: &App, area: Rect, frame: &mut Frame) {
     frame.render_widget(block.clone(), area);
 
     let main_layout = Layout::vertical([
-        Constraint::Percentage(15),
-        Constraint::Percentage(25),
+        Constraint::Percentage(40),
         Constraint::Percentage(60),
     ]);
 
     let rows = main_layout.split(inner_area);
 
-    // 上面切割出界面是否在番茄钟进行中和结束时播放音乐.
-    let up_layout = Layout::horizontal([Constraint::Percentage(50), Constraint::Percentage(50)]);
-    let up_areas = up_layout.split(rows[0]);
-
     // 中间切割出常用时间和自定义的时间
-    let middle_layout =
+    let up_layout =
         Layout::horizontal([Constraint::Percentage(40), Constraint::Percentage(60)]);
-    let middle_areas = middle_layout.split(rows[1]);
+    let up_areas = up_layout.split(rows[0]);
 
     // 下面就不切割了, 因为是音乐播放列表
 
     if let Some(window) = &_app.active_window
         && let WindowData::PomodoroSettings {
-            play_during_pomodoro,
-            play_on_finish,
+            // play_during_pomodoro,
+            // play_on_finish,
             selected_duration,
             custom_duration,
             current_focus,
         } = &window.data
     {
-        draw_up_left(
+        draw_selected_duration(
             _app,
             up_areas[0],
-            *play_during_pomodoro,
-            *current_focus == 0,
-            frame,
-        );
-        draw_up_right(
-            _app,
-            up_areas[1],
-            *play_on_finish,
-            *current_focus == 1,
-            frame,
-        );
-        draw_middle_left(
-            _app,
-            middle_areas[0],
             *selected_duration,
             *current_focus == 2,
             frame,
         );
         draw_middle_right(
             _app,
-            middle_areas[1],
+            up_areas[1],
             custom_duration,
             *current_focus == 3,
             frame,
         );
-        draw_down(_app, rows[2], *current_focus == 4, frame);
+        draw_down(_app, rows[1], *current_focus == 4, frame);
     }
 }
 
-fn draw_up_left(_app: &App, area: Rect, enabled: bool, is_active: bool, frame: &mut Frame) {
-    let border_style = if is_active {
-        Style::default().fg(TokyoNight::CYAN).bold()
-    } else {
-        Style::default().fg(TokyoNight::RED)
-    };
-
-    let block = Block::bordered()
-        .title(Line::from(" 🎵 运行时播放音乐? ").centered())
-        .border_set(border::ROUNDED)
-        .border_style(border_style);
-
-    let status = if enabled { "✅ 是" } else { "❌ 否" };
-    let paragraph = Paragraph::new(status)
-        .block(block)
-        .alignment(ratatui::layout::Alignment::Center);
-
-    frame.render_widget(paragraph, area);
-}
-
-fn draw_up_right(_app: &App, area: Rect, enabled: bool, is_active: bool, frame: &mut Frame) {
-    let border_style = if is_active {
-        Style::default().fg(TokyoNight::CYAN).bold()
-    } else {
-        Style::default().fg(TokyoNight::RED)
-    };
-
-    let block = Block::bordered()
-        .title(Line::from(" ⏹️ 结束时播放音乐? ").centered())
-        .border_set(border::ROUNDED)
-        .border_style(border_style);
-
-    let status = if enabled { "✅ 是" } else { "❌ 否" };
-    let paragraph = Paragraph::new(status)
-        .block(block)
-        .alignment(ratatui::layout::Alignment::Center);
-
-    frame.render_widget(paragraph, area);
-}
-
-fn draw_middle_left(_app: &App, area: Rect, selected: usize, is_active: bool, frame: &mut Frame) {
+fn draw_selected_duration(
+    _app: &App,
+    area: Rect,
+    selected: usize,
+    is_active: bool,
+    frame: &mut Frame,
+) {
     let border_style = if is_active {
         Style::default().fg(TokyoNight::CYAN).bold()
     } else {

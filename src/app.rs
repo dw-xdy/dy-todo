@@ -1,30 +1,54 @@
-use crate::models::{
-    // 标签相关
-    // Tag,
+// ==================== 标准库导入 ====================
+use std::collections::HashSet;           // 哈希集合，用于存储不重复的标签
+use std::fs::File;                       // 文件操作
+use std::io;                              // 输入输出
+use std::io::BufReader;                   // 带缓冲的读取器，用于读取音频文件
+use std::sync::{Arc, Mutex};              // 线程安全的共享所有权和互斥锁
 
-    // 窗口相关
-    ActiveWindow,
-    // 音乐相关
-    AudioFileInfo,
-    MusicPlayerState,
-    PlaybackState,
-    // 任务相关
-    TodoTask,
-    WindowData,
-    WindowLayout,
-    WindowType,
+// ==================== 第三方库导入 ====================
+// 时间日期处理
+use chrono::{Duration, Utc};               // 日期时间处理
+
+// 终端事件处理
+use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind}; // 键盘事件
+
+// TUI 渲染
+use ratatui::{
+    DefaultTerminal,                        // 默认终端类型
+    widgets::ListState,                      // 列表状态管理
+    widgets::ScrollbarState,                  // 滚动条状态管理
 };
-use crate::ui; // 引入 UI 渲染
-use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
-// 滚动条
-use ratatui::widgets::ScrollbarState; // 确保导入
-use ratatui::{DefaultTerminal, widgets::ListState};
-use rodio::{Decoder, OutputStream, Sink};
-use std::fs::File;
-use std::io;
-use std::io::BufReader;
-use std::sync::{Arc, Mutex};
-use walkdir::WalkDir; // 确保 Cargo.toml 有 walkdir 依赖
+
+// 音频播放
+use rodio::{Decoder, OutputStream, Sink};   // 音频解码和播放
+
+// 目录遍历
+use walkdir::WalkDir;                        // 递归遍历目录
+
+// ==================== 项目内部模块导入 ====================
+// UI 渲染模块
+use crate::ui;                               // 界面渲染逻辑
+
+// 数据模型模块 - 按功能分组
+use crate::models::{
+    // ----- 窗口相关模型 -----
+    ActiveWindow,       // 活动窗口
+    WindowData,         // 窗口数据
+    WindowLayout,       // 窗口布局
+    WindowType,         // 窗口类型
+    
+    // ----- 音乐相关模型 -----
+    AudioFileInfo,      // 音频文件信息
+    MusicPlayerState,   // 音乐播放器状态
+    PlaybackState,      // 播放状态（播放/暂停/停止）
+    
+    // ----- 标签相关模型 -----
+    Tag,                // 标签
+    TaskStatus,         // 任务状态
+    
+    // ----- 任务相关模型 -----
+    TodoTask,           // 待办任务
+};
 
 pub struct App {
     pub exit: bool,
@@ -48,23 +72,79 @@ impl Default for App {
     fn default() -> Self {
         // 1. 准备一些初始数据（可选，方便你调试界面）
         let tasks = vec![
+            // 测试用例1：未完成的代码任务
             TodoTask {
                 title: "写代码".into(),
                 description: "使用 Rust 和 Ratatui 编写 TUI 应用".into(),
-                is_completed: false,
-                tags: std::collections::HashSet::new(),
+                status: TaskStatus::Todo,
+                tags: {
+                    let mut tags = HashSet::new();
+                    tags.insert(Tag::new("编程".to_string()));
+                    tags.insert(Tag::new("学习".to_string()));
+                    tags
+                },
+                created_at: Utc::now() - Duration::days(2), // 2天前创建
+                due_date: Some(Utc::now() + Duration::days(5)), // 5天后截止
+                finish_date: None,
             },
+            // 测试用例2：已完成的任务
             TodoTask {
                 title: "去运动".into(),
                 description: "跑 5 公里，呼吸新鲜空气".into(),
-                is_completed: true,
-                tags: std::collections::HashSet::new(),
+                status: TaskStatus::Completed,
+                tags: {
+                    let mut tags = HashSet::new();
+                    tags.insert(Tag::new("健康".to_string()));
+                    tags.insert(Tag::new("运动".to_string()));
+                    tags
+                },
+                created_at: Utc::now() - Duration::days(3), // 3天前创建
+                due_date: Some(Utc::now() - Duration::days(1)), // 昨天截止（但已完成）
+                finish_date: Some(Utc::now() - Duration::days(1)), // 昨天完成
             },
+            // 测试用例3：另一个未完成的代码任务
             TodoTask {
-                title: "写代码".into(),
-                description: "使用 Rust 和 Ratatui 编写 TUI 应用".into(),
-                is_completed: false,
-                tags: std::collections::HashSet::new(),
+                title: "调试程序".into(),
+                description: "修复 TUI 应用中的渲染 bug".into(),
+                status: TaskStatus::Todo,
+                tags: {
+                    let mut tags = HashSet::new();
+                    tags.insert(Tag::new("编程".to_string()));
+                    tags.insert(Tag::new("调试".to_string()));
+                    tags
+                },
+                created_at: Utc::now() - Duration::hours(5), // 5小时前创建
+                due_date: Some(Utc::now() + Duration::hours(3)), // 3小时后截止
+                finish_date: None,
+            },
+            // 测试用例4：今日到期的任务
+            TodoTask {
+                title: "买牛奶".into(),
+                description: "记得买低脂的".into(),
+                status: TaskStatus::DueToday,
+                tags: {
+                    let mut tags = HashSet::new();
+                    tags.insert(Tag::new("购物".to_string()));
+                    tags
+                },
+                created_at: Utc::now() - Duration::days(1), // 1天前创建
+                due_date: Some(Utc::now() + Duration::hours(5)), // 今天截止
+                finish_date: None,
+            },
+            // 测试用例5：已逾期的任务
+            TodoTask {
+                title: "交水电费".into(),
+                description: "否则会断水断电".into(),
+                status: TaskStatus::Overdue,
+                tags: {
+                    let mut tags = HashSet::new();
+                    tags.insert(Tag::new("生活".to_string()));
+                    tags.insert(Tag::new("紧急".to_string()));
+                    tags
+                },
+                created_at: Utc::now() - Duration::days(7), // 7天前创建
+                due_date: Some(Utc::now() - Duration::days(2)), // 2天前截止
+                finish_date: None,
             },
         ];
 
@@ -160,7 +240,7 @@ impl App {
                 }
             }
             // 快捷键打开不同窗口
-            KeyCode::Char('n') => self.open_window(WindowType::CreateTask),
+            KeyCode::Char('a') => self.open_window(WindowType::CreateTask),
             KeyCode::Char('p') => self.open_window(WindowType::PomodoroSettings),
             _ => {}
         }
@@ -270,8 +350,8 @@ impl App {
             },
 
             WindowData::PomodoroSettings {
-                play_during_pomodoro,
-                play_on_finish,
+                // play_during_pomodoro,
+                // play_on_finish,
                 selected_duration,
                 custom_duration,
                 current_focus,
@@ -289,8 +369,8 @@ impl App {
                         } else {
                             // 保存设置
                             self.save_pomodoro_settings(
-                                *play_during_pomodoro,
-                                *play_on_finish,
+                                // *play_during_pomodoro,
+                                // *play_on_finish,
                                 *selected_duration,
                                 custom_duration.clone(),
                             );
@@ -308,8 +388,8 @@ impl App {
                             true
                         } else {
                             match *current_focus {
-                                0 => *play_during_pomodoro = !*play_during_pomodoro,
-                                1 => *play_on_finish = !*play_on_finish,
+                                // 0 => *play_during_pomodoro = !*play_during_pomodoro,
+                                // 1 => *play_on_finish = !*play_on_finish,
                                 _ => {}
                             }
                             true
@@ -484,24 +564,20 @@ impl App {
 
     /// 创建新任务
     fn create_task(&mut self, title: String, description: String) {
-        let task = TodoTask {
-            title,
-            description,
-            is_completed: false,
-            tags: std::collections::HashSet::new(),
-        };
+        // 使用 new() 构造函数创建任务
+        let task = TodoTask::new(title, description);
+
         self.tasks.push(task);
 
         // 更新滚动条
         self.scroll_state = ScrollbarState::new(self.tasks.len());
     }
-
     /// 保存番茄钟设置
     // TODO:
     fn save_pomodoro_settings(
         &mut self,
-        play_during: bool,
-        play_finish: bool,
+        // play_during: bool,
+        // play_finish: bool,
         duration_index: usize,
         custom_duration: String,
     ) {
@@ -519,8 +595,8 @@ impl App {
                 cursor_position: 0, // 新增
             },
             WindowType::PomodoroSettings => WindowData::PomodoroSettings {
-                play_during_pomodoro: false,
-                play_on_finish: false,
+                // play_during_pomodoro: false,
+                // play_on_finish: false,
                 selected_duration: 2, // 默认25分钟
                 custom_duration: String::new(),
                 current_focus: 0,
