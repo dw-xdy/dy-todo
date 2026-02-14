@@ -1,57 +1,57 @@
 // ==================== 标准库导入 ====================
-use std::collections::HashSet;           // 哈希集合，用于存储不重复的标签
-use std::fs::File;                       // 文件操作
-use std::io;                              // 输入输出
-use std::io::BufReader;                   // 带缓冲的读取器，用于读取音频文件
-use std::sync::{Arc, Mutex};              // 线程安全的共享所有权和互斥锁
+use std::collections::HashSet; // 哈希集合，用于存储不重复的标签
+use std::fs::File; // 文件操作
+use std::io; // 输入输出
+use std::io::BufReader; // 带缓冲的读取器，用于读取音频文件
+use std::sync::{Arc, Mutex}; // 线程安全的共享所有权和互斥锁
 
 // ==================== 第三方库导入 ====================
 // 时间日期处理
-use chrono::{Duration, Utc};               // 日期时间处理
+use chrono::{Duration, Utc}; // 日期时间处理
 
 // 终端事件处理
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind}; // 键盘事件
 
 // TUI 渲染
 use ratatui::{
-    DefaultTerminal,                        // 默认终端类型
-    widgets::ListState,                      // 列表状态管理
-    widgets::ScrollbarState,                  // 滚动条状态管理
+    DefaultTerminal,         // 默认终端类型
+    widgets::ListState,      // 列表状态管理
+    widgets::ScrollbarState, // 滚动条状态管理
 };
 
 // 音频播放
-use rodio::{Decoder, OutputStream, Sink};   // 音频解码和播放
+use rodio::{Decoder, OutputStream, Sink}; // 音频解码和播放
 
 // 目录遍历
-use walkdir::WalkDir;                        // 递归遍历目录
+use walkdir::WalkDir; // 递归遍历目录
 
 // ==================== 项目内部模块导入 ====================
 // UI 渲染模块
-use crate::ui;                               // 界面渲染逻辑
+use crate::ui; // 界面渲染逻辑
 
 // 数据模型模块 - 按功能分组
 use crate::models::{
     // ----- 窗口相关模型 -----
-    ActiveWindow,       // 活动窗口
-    WindowData,         // 窗口数据
-    WindowLayout,       // 窗口布局
-    WindowType,         // 窗口类型
-    
+    ActiveWindow, // 活动窗口
     // ----- 音乐相关模型 -----
-    AudioFileInfo,      // 音频文件信息
-    MusicPlayerState,   // 音乐播放器状态
-    PlaybackState,      // 播放状态（播放/暂停/停止）
-    
+    AudioFileInfo,    // 音频文件信息
+    MusicPlayerState, // 音乐播放器状态
+    PlaybackState,    // 播放状态（播放/暂停/停止）
+
     // ----- 标签相关模型 -----
-    Tag,                // 标签
-    TaskStatus,         // 任务状态
-    
+    Tag,        // 标签
+    TaskStatus, // 任务状态
+
     // ----- 任务相关模型 -----
-    TodoTask,           // 待办任务
+    TodoTask,     // 待办任务
+    WindowData,   // 窗口数据
+    WindowLayout, // 窗口布局
+    WindowType,   // 窗口类型
 };
 
 pub struct App {
     pub exit: bool,
+    pub show_dashboard: bool, // 新增：控制是否显示启动界面
     pub tasks: Vec<TodoTask>,
     pub list_state: ListState,
     pub active_window: Option<ActiveWindow>,
@@ -159,6 +159,7 @@ impl Default for App {
         let tasks_len = tasks.len();
         let mut app = Self {
             exit: false,
+            show_dashboard: true, // 初始显示 dashboard
             tasks,
             list_state,
             scroll_state: ScrollbarState::new(tasks_len),
@@ -198,6 +199,11 @@ impl App {
     }
 
     fn handle_key_event(&mut self, key: event::KeyEvent) {
+        // 如果正在显示 dashboard，按任意键关闭
+        if self.show_dashboard {
+            self.show_dashboard = false;
+            return;
+        }
         // 1. 暂时取走窗口
         if let Some(mut window) = self.active_window.take() {
             // 2. 处理事件
@@ -350,8 +356,6 @@ impl App {
             },
 
             WindowData::PomodoroSettings {
-                // play_during_pomodoro,
-                // play_on_finish,
                 selected_duration,
                 custom_duration,
                 current_focus,
@@ -369,8 +373,6 @@ impl App {
                         } else {
                             // 保存设置
                             self.save_pomodoro_settings(
-                                // *play_during_pomodoro,
-                                // *play_on_finish,
                                 *selected_duration,
                                 custom_duration.clone(),
                             );
@@ -388,8 +390,6 @@ impl App {
                             true
                         } else {
                             match *current_focus {
-                                // 0 => *play_during_pomodoro = !*play_during_pomodoro,
-                                // 1 => *play_on_finish = !*play_on_finish,
                                 _ => {}
                             }
                             true
@@ -574,13 +574,7 @@ impl App {
     }
     /// 保存番茄钟设置
     // TODO:
-    fn save_pomodoro_settings(
-        &mut self,
-        // play_during: bool,
-        // play_finish: bool,
-        duration_index: usize,
-        custom_duration: String,
-    ) {
+    fn save_pomodoro_settings(&mut self, duration_index: usize, custom_duration: String) {
         // 这里实现保存番茄钟设置的逻辑
     }
 
@@ -595,8 +589,6 @@ impl App {
                 cursor_position: 0, // 新增
             },
             WindowType::PomodoroSettings => WindowData::PomodoroSettings {
-                // play_during_pomodoro: false,
-                // play_on_finish: false,
                 selected_duration: 2, // 默认25分钟
                 custom_duration: String::new(),
                 current_focus: 0,

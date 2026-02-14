@@ -2,6 +2,8 @@
 pub enum WindowType {
     CreateTask,
     PomodoroSettings,
+    Setting,
+    Search,
 }
 
 #[derive(Debug, Clone)]

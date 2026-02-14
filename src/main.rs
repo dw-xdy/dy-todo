@@ -1,6 +1,7 @@
 mod app;
 mod models;
 mod ui;
+mod dashboard;
 
 use app::App;
 use std::io;

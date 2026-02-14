@@ -1,7 +1,7 @@
 pub struct AsciiArt;
 
 impl AsciiArt {
-    /// 生成带有固定前导空格的 DWXDY ASCII Art（已预居中）
+    /// 生成带有固定前导空格的 EWXDY ASCII Art（已预居中）
     /// 注意：当前未被使用，保留作为固定宽度的备选方案
     pub fn header() -> Vec<&'static str> {
         vec![

@@ -1,6 +1,7 @@
 use crate::app::App;
+use crate::dashboard::Dashboard;
 use crate::models::{ActiveWindow, PlaybackState, TaskStatus, TokyoNight, WindowData, WindowType};
-use chrono::{Utc};
+use chrono::Utc;
 use ratatui::{
     Frame,
     layout::{Constraint, Layout, Position, Rect},
@@ -12,6 +13,12 @@ use ratatui::{
 
 pub fn render(app: &App, frame: &mut Frame) {
     let area = frame.area();
+
+    // 如果显示 dashboard，只渲染 dashboard
+    if app.show_dashboard {
+        Dashboard::render(area, frame, "0.1.5");
+        return;
+    }
     // 竖着进行分割, 分割成三份
     let main_layout = Layout::horizontal([
         Constraint::Percentage(15),
@@ -39,7 +46,7 @@ fn draw_search(_app: &App, area: Rect, frame: &mut Frame) {
         .title(Line::from(" 🔍 Search ").centered())
         .border_style(Style::default().fg(TokyoNight::MAGENTA))
         .border_set(border::ROUNDED);
-    frame.render_widget(Paragraph::new("输入关键词搜索...").block(block), area);
+    frame.render_widget(Paragraph::new("输入标签搜索...").block(block), area);
 }
 
 fn draw_todo(app: &App, area: Rect, title: &str, is_active: bool, frame: &mut Frame) {
@@ -106,7 +113,7 @@ fn draw_todo(app: &App, area: Rect, title: &str, is_active: bool, frame: &mut Fr
         }
     }
 
-    // 再渲染 Paragraph（这里会消耗 display_text）
+    // 先渲染 Paragraph
     let paragraph = Paragraph::new(display_text)
         .block(block)
         .style(if is_active {
@@ -116,6 +123,22 @@ fn draw_todo(app: &App, area: Rect, title: &str, is_active: bool, frame: &mut Fr
         });
 
     frame.render_widget(paragraph, area);
+
+    // 再设置光标位置（渲染之后）
+    if let Some(pos) = cursor_pos {
+        let visible_start = if pos > area.width as usize - 3 {
+            pos.saturating_sub(area.width as usize - 3)
+        } else {
+            0
+        };
+
+        let cursor_x = area.x + 1 + (pos - visible_start) as u16;
+        let cursor_y = area.y + 1;
+
+        if cursor_x < area.x + area.width - 1 {
+            frame.set_cursor_position(Position::new(cursor_x, cursor_y));
+        }
+    }
 }
 
 fn draw_desc(app: &App, area: Rect, description: &str, is_active: bool, frame: &mut Frame) {
@@ -181,7 +204,7 @@ fn draw_desc(app: &App, area: Rect, description: &str, is_active: bool, frame: &
         }
     }
 
-    // 再创建 Paragraph (这里会消耗 display_text）
+    // 先渲染 Paragraph
     let paragraph = Paragraph::new(display_text)
         .block(block)
         .style(if is_active {
@@ -191,6 +214,22 @@ fn draw_desc(app: &App, area: Rect, description: &str, is_active: bool, frame: &
         });
 
     frame.render_widget(paragraph, area);
+
+    // 再设置光标位置（渲染之后）
+    if let Some(pos) = cursor_pos {
+        let visible_start = if pos > area.width as usize - 3 {
+            pos.saturating_sub(area.width as usize - 3)
+        } else {
+            0
+        };
+
+        let cursor_x = area.x + 1 + (pos - visible_start) as u16;
+        let cursor_y = area.y + 1;
+
+        if cursor_x < area.x + area.width - 1 {
+            frame.set_cursor_position(Position::new(cursor_x, cursor_y));
+        }
+    }
 }
 
 fn draw_todo_list(app: &App, area: Rect, frame: &mut Frame) {
@@ -201,7 +240,7 @@ fn draw_todo_list(app: &App, area: Rect, frame: &mut Frame) {
         .map(|task| {
             // 使用 status.icon() 获取对应的图标
             let status_icon = task.status.icon();
-            
+
             // 可以根据状态设置不同颜色（可选）
             let icon_color = match task.status {
                 TaskStatus::Completed => Color::Green,
@@ -209,21 +248,19 @@ fn draw_todo_list(app: &App, area: Rect, frame: &mut Frame) {
                 TaskStatus::Overdue => Color::Red,
                 TaskStatus::DueToday => Color::Yellow,
             };
-            
+
             // 创建带颜色的图标和标题
-            let icon_span = Span::styled(
-                format!(" {} ", status_icon),
-                Style::default().fg(icon_color)
-            );
-            
+            let icon_span =
+                Span::styled(format!(" {status_icon} "), Style::default().fg(icon_color));
+
             let title_span = Span::raw(task.title.clone());
-            
+
             // 如果有截止日期，添加额外信息（可选）
             let due_info = if let Some(due) = task.due_date {
                 let now = Utc::now();
                 let days = (due - now).num_days();
                 if days > 0 && task.status != TaskStatus::Completed {
-                    format!(" ({}d)", days)
+                    format!(" ({days}d)")
                 } else if days == 0 && task.status != TaskStatus::Completed {
                     " (今天)".to_string()
                 } else {
@@ -232,9 +269,9 @@ fn draw_todo_list(app: &App, area: Rect, frame: &mut Frame) {
             } else {
                 String::new()
             };
-            
+
             let due_span = Span::raw(due_info);
-            
+
             ListItem::new(Line::from(vec![icon_span, title_span, due_span]))
         })
         .collect();
@@ -290,7 +327,7 @@ fn draw_details(_app: &App, area: Rect, frame: &mut Frame) {
     let block = Block::bordered()
         .title(Line::from(" ℹ️ Info ").centered())
         .border_style(Style::default().fg(TokyoNight::GRAY))
-        .border_set(border::THICK);
+        .border_set(border::ROUNDED);
 
     let paragraph = Paragraph::new("这里是任务的详细描述...").block(block);
     frame.render_widget(paragraph, area);
@@ -363,14 +400,12 @@ fn draw_create_task_window(
     let left_layout = Layout::vertical([Constraint::Percentage(30), Constraint::Percentage(70)]);
     let left_areas = left_layout.split(chunks[0]);
 
-    // 修改 draw_todo 函数显示输入框
     draw_todo(_app, left_areas[0], title, current_field == 0, frame);
-    // 修改 draw_desc 函数显示输入框
     draw_desc(_app, left_areas[1], description, current_field == 1, frame);
-    draw_diy_tag(_app, chunks[1], frame);
+    draw_tag(_app, chunks[1], frame);
 }
 
-fn draw_diy_tag(_app: &App, area: Rect, frame: &mut Frame) {
+fn draw_tag(_app: &App, area: Rect, frame: &mut Frame) {
     let block = Block::bordered()
         .title(Line::from(" 自定义标签 ").centered())
         .border_set(border::ROUNDED)
@@ -390,26 +425,20 @@ fn draw_pomodoro_settings_window(_app: &App, area: Rect, frame: &mut Frame) {
 
     let inner_area = block.inner(area);
 
-    frame.render_widget(block.clone(), area);
+    frame.render_widget(block, area);
 
-    let main_layout = Layout::vertical([
-        Constraint::Percentage(40),
-        Constraint::Percentage(60),
-    ]);
+    let main_layout = Layout::vertical([Constraint::Percentage(40), Constraint::Percentage(60)]);
 
     let rows = main_layout.split(inner_area);
 
-    // 中间切割出常用时间和自定义的时间
-    let up_layout =
-        Layout::horizontal([Constraint::Percentage(40), Constraint::Percentage(60)]);
+    // 上面切割出常用时间和自定义的时间
+    let up_layout = Layout::horizontal([Constraint::Percentage(40), Constraint::Percentage(60)]);
     let up_areas = up_layout.split(rows[0]);
 
     // 下面就不切割了, 因为是音乐播放列表
 
     if let Some(window) = &_app.active_window
         && let WindowData::PomodoroSettings {
-            // play_during_pomodoro,
-            // play_on_finish,
             selected_duration,
             custom_duration,
             current_focus,
@@ -456,7 +485,7 @@ fn draw_selected_duration(
         .iter()
         .enumerate()
         .map(|(i, d)| {
-            let prefix = if i == selected { "▶ " } else { "  " };
+            let prefix = if i == selected { " ▶ " } else { "  " };
             ListItem::new(Line::from(vec![prefix.into(), (*d).into()]))
         })
         .collect();
@@ -511,11 +540,11 @@ fn draw_down(app: &App, area: Rect, is_active: bool, frame: &mut Frame) {
     let help_text = if is_active {
         Line::from(vec![
             " ↑/k ↓/j ".fg(Color::Rgb(255, 200, 100)), // 暖黄
-            " 选择 ".fg(Color::White),
-            " Enter ".fg(Color::Rgb(100, 255, 100)), // 亮绿
-            " 播放 ".fg(Color::White),
-            " Space ".fg(Color::Rgb(100, 200, 255)), // 天蓝
-            " 暂停/继续 ".fg(Color::White),
+            "选择 ".fg(Color::White),
+            "Enter ".fg(Color::Rgb(100, 255, 100)), // 亮绿
+            "播放 ".fg(Color::White),
+            "Space ".fg(Color::Rgb(100, 200, 255)), // 天蓝
+            "暂停/继续 ".fg(Color::White),
         ])
     } else {
         Line::from("")
