@@ -1,7 +1,6 @@
 use crate::app::App;
 use crate::dashboard::Dashboard;
 use crate::models::{ActiveWindow, PlaybackState, TaskStatus, TokyoNight, WindowData, WindowType};
-use chrono::Utc;
 use ratatui::{
     Frame,
     layout::{Constraint, Layout, Position, Rect},
@@ -10,13 +9,14 @@ use ratatui::{
     text::{Line, Span},
     widgets::{Block, Clear, List, ListItem, Paragraph, Scrollbar, ScrollbarOrientation},
 };
+use time::OffsetDateTime;
 
 pub fn render(app: &App, frame: &mut Frame) {
     let area = frame.area();
 
     // 如果显示 dashboard，只渲染 dashboard
     if app.show_dashboard {
-        Dashboard::render(area, frame, "0.1.5");
+        Dashboard::render(area, frame, "1.0.0");
         return;
     }
     // 竖着进行分割, 分割成三份
@@ -257,8 +257,8 @@ fn draw_todo_list(app: &App, area: Rect, frame: &mut Frame) {
 
             // 如果有截止日期，添加额外信息（可选）
             let due_info = if let Some(due) = task.due_date {
-                let now = Utc::now();
-                let days = (due - now).num_days();
+                let now = OffsetDateTime::now_utc();
+                let days = (due - now).whole_days();
                 if days > 0 && task.status != TaskStatus::Completed {
                     format!(" ({days}d)")
                 } else if days == 0 && task.status != TaskStatus::Completed {

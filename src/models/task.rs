@@ -1,5 +1,5 @@
-use chrono::{DateTime, Utc};
 use std::collections::HashSet;
+use time::{Duration, OffsetDateTime};
 
 // 任务状态（系统内置，不可自定义）
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -42,9 +42,9 @@ pub struct TodoTask {
     pub description: String,
     pub status: TaskStatus,
     pub tags: HashSet<Tag>,
-    pub created_at: DateTime<Utc>,          // 创建时间
-    pub due_date: Option<DateTime<Utc>>,    // 截止日期
-    pub finish_date: Option<DateTime<Utc>>, // 完成日期
+    pub created_at: OffsetDateTime,          // 创建时间
+    pub due_date: Option<OffsetDateTime>,    // 截止日期
+    pub finish_date: Option<OffsetDateTime>, // 完成日期
 }
 
 impl TodoTask {
@@ -54,7 +54,7 @@ impl TodoTask {
             description,
             status: TaskStatus::Todo,
             tags: HashSet::new(),
-            created_at: Utc::now(),
+            created_at: OffsetDateTime::now_utc(), // 修改：Utc::now() -> OffsetDateTime::now_utc()
             due_date: None,
             finish_date: None,
         }
@@ -72,7 +72,7 @@ impl TodoTask {
         self.status = TaskStatus::Completed;
     }
 
-    pub fn set_due_date(&mut self, due_date: DateTime<Utc>) {
+    pub fn set_due_date(&mut self, due_date: OffsetDateTime) {
         self.due_date = Some(due_date);
         self.update_status();
     }
@@ -82,12 +82,12 @@ impl TodoTask {
             return;
         }
 
-        let now = Utc::now();
+        let now = OffsetDateTime::now_utc();
 
         if let Some(due) = self.due_date {
             if due < now {
                 self.status = TaskStatus::Overdue;
-            } else if due.date_naive() == now.date_naive() {
+            } else if due.date() == now.date() {
                 self.status = TaskStatus::DueToday;
             } else {
                 self.status = TaskStatus::Todo;

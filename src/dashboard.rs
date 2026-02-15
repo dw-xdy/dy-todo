@@ -14,9 +14,9 @@ impl Dashboard {
     pub fn render(area: Rect, frame: &mut Frame, version: &str) {
         // 创建垂直布局，将屏幕分成三部分
         let layout = ratatui::layout::Layout::vertical([
-            ratatui::layout::Constraint::Percentage(30), // 上部留白
-            ratatui::layout::Constraint::Percentage(40), // 中间放 ASCII Art
-            ratatui::layout::Constraint::Percentage(30), // 下部放版本和提示
+            ratatui::layout::Constraint::Percentage(30), // 上部放 ASCII Art
+            ratatui::layout::Constraint::Percentage(40), // 中间放快捷导航提示信息.
+            ratatui::layout::Constraint::Percentage(30), // 下部放提示信息
         ]);
         let chunks = layout.split(area);
 
@@ -29,17 +29,8 @@ impl Dashboard {
         // 转换为带颜色的文本
         let header_text: Vec<Line> = header_lines
             .iter()
-            .enumerate()
-            .map(|(i, line)| {
-                let color = match i % 6 {
-                    0 => TokyoNight::CYAN,
-                    1 => TokyoNight::MAGENTA,
-                    2 => TokyoNight::ORANGE,
-                    3 => TokyoNight::RED,
-                    4 => TokyoNight::GRAY,
-                    5 => TokyoNight::CYAN,
-                    _ => TokyoNight::GRAY,
-                };
+            .map(|line| {
+                let color = TokyoNight::CYAN;
                 Line::from(vec![Span::styled(line, Style::default().fg(color))])
             })
             .collect();
@@ -48,14 +39,7 @@ impl Dashboard {
         let header_paragraph = Paragraph::new(header_text)
             .alignment(Alignment::Center)
             .wrap(Wrap { trim: true });
-        frame.render_widget(header_paragraph, chunks[1]);
-
-        // 渲染版本信息
-        let version_text = format!("版本: {}", version);
-        let version_paragraph = Paragraph::new(version_text)
-            .alignment(Alignment::Center)
-            .style(Style::default().fg(TokyoNight::GRAY));
-        frame.render_widget(version_paragraph, chunks[2]);
+        frame.render_widget(header_paragraph, chunks[0]);
 
         // 渲染底部提示
         let footer_area = Rect {

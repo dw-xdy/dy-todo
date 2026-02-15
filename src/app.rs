@@ -7,7 +7,7 @@ use std::sync::{Arc, Mutex}; // 线程安全的共享所有权和互斥锁
 
 // ==================== 第三方库导入 ====================
 // 时间日期处理
-use chrono::{Duration, Utc}; // 日期时间处理
+use time::{Duration, OffsetDateTime}; // 使用 time 进行日期时间处理
 
 // 终端事件处理
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind}; // 键盘事件
@@ -83,8 +83,8 @@ impl Default for App {
                     tags.insert(Tag::new("学习".to_string()));
                     tags
                 },
-                created_at: Utc::now() - Duration::days(2), // 2天前创建
-                due_date: Some(Utc::now() + Duration::days(5)), // 5天后截止
+                created_at: OffsetDateTime::now_utc() - Duration::days(2), // 2天前创建
+                due_date: Some(OffsetDateTime::now_utc() + Duration::days(5)), // 5天后截止
                 finish_date: None,
             },
             // 测试用例2：已完成的任务
@@ -98,9 +98,9 @@ impl Default for App {
                     tags.insert(Tag::new("运动".to_string()));
                     tags
                 },
-                created_at: Utc::now() - Duration::days(3), // 3天前创建
-                due_date: Some(Utc::now() - Duration::days(1)), // 昨天截止（但已完成）
-                finish_date: Some(Utc::now() - Duration::days(1)), // 昨天完成
+                created_at: OffsetDateTime::now_utc() - Duration::days(3), // 3天前创建
+                due_date: Some(OffsetDateTime::now_utc() - Duration::days(1)), // 昨天截止（但已完成）
+                finish_date: Some(OffsetDateTime::now_utc() - Duration::days(1)), // 昨天完成
             },
             // 测试用例3：另一个未完成的代码任务
             TodoTask {
@@ -113,8 +113,8 @@ impl Default for App {
                     tags.insert(Tag::new("调试".to_string()));
                     tags
                 },
-                created_at: Utc::now() - Duration::hours(5), // 5小时前创建
-                due_date: Some(Utc::now() + Duration::hours(3)), // 3小时后截止
+                created_at: OffsetDateTime::now_utc() - Duration::hours(5), // 5小时前创建
+                due_date: Some(OffsetDateTime::now_utc() + Duration::hours(3)), // 3小时后截止
                 finish_date: None,
             },
             // 测试用例4：今日到期的任务
@@ -127,8 +127,8 @@ impl Default for App {
                     tags.insert(Tag::new("购物".to_string()));
                     tags
                 },
-                created_at: Utc::now() - Duration::days(1), // 1天前创建
-                due_date: Some(Utc::now() + Duration::hours(5)), // 今天截止
+                created_at: OffsetDateTime::now_utc() - Duration::days(1), // 1天前创建
+                due_date: Some(OffsetDateTime::now_utc() + Duration::hours(5)), // 今天截止
                 finish_date: None,
             },
             // 测试用例5：已逾期的任务
@@ -142,8 +142,8 @@ impl Default for App {
                     tags.insert(Tag::new("紧急".to_string()));
                     tags
                 },
-                created_at: Utc::now() - Duration::days(7), // 7天前创建
-                due_date: Some(Utc::now() - Duration::days(2)), // 2天前截止
+                created_at: OffsetDateTime::now_utc() - Duration::days(7), // 7天前创建
+                due_date: Some(OffsetDateTime::now_utc() - Duration::days(2)), // 2天前截止
                 finish_date: None,
             },
         ];
