@@ -248,6 +248,7 @@ impl App {
             // 快捷键打开不同窗口
             KeyCode::Char('a') => self.open_window(WindowType::CreateTask),
             KeyCode::Char('p') => self.open_window(WindowType::PomodoroSettings),
+            KeyCode::Char('o') => self.open_window(WindowType::Settings),
             _ => {}
         }
     }
@@ -434,6 +435,71 @@ impl App {
                     _ => false,
                 }
             }
+            // 在 handle_window_key_event 方法中，为 Settings 窗口添加音乐列表的导航
+            WindowData::Settings {
+                play_during_pomodoro,
+                play_on_finish,
+                current_focus,
+            } => {
+                match key.code {
+                    KeyCode::Tab => {
+                        // 在三个选项之间切换（两个设置选项 + 音乐列表）
+                        *current_focus = (*current_focus + 1) % 3;
+                        true
+                    }
+                    KeyCode::Enter => {
+                        if *current_focus == 2 {
+                            // 在音乐列表按Enter播放选中的音乐
+                            self.play_selected_music();
+                            true
+                        } else {
+                            // TODO:
+                            // 保存设置并关闭窗口
+                            // self.save_settings(*play_during_pomodoro, *play_on_finish);
+                            // self.close_window();
+                            true
+                        }
+                    }
+                    KeyCode::Esc => {
+                        self.close_window();
+                        true
+                    }
+                    KeyCode::Char(' ') => {
+                        if *current_focus == 2 {
+                            // 在音乐列表按空格控制播放/暂停
+                            self.toggle_playback();
+                            true
+                        } else {
+                            // 切换当前选中的设置选项
+                            if *current_focus == 0 {
+                                *play_during_pomodoro = !*play_during_pomodoro;
+                            } else if *current_focus == 1 {
+                                *play_on_finish = !*play_on_finish;
+                            }
+                            true
+                        }
+                    }
+                    KeyCode::Up | KeyCode::Char('k') => {
+                        if *current_focus == 2 {
+                            // 音乐列表向上移动
+                            self.music_list_previous();
+                        } else if *current_focus > 0 {
+                            *current_focus -= 1;
+                        }
+                        true
+                    }
+                    KeyCode::Down | KeyCode::Char('j') => {
+                        if *current_focus == 2 {
+                            // 音乐列表向下移动
+                            self.music_list_next();
+                        } else if *current_focus < 2 {
+                            *current_focus += 1;
+                        }
+                        true
+                    }
+                    _ => false,
+                }
+            }
             _ => false,
         }
     }
@@ -572,6 +638,7 @@ impl App {
         // 更新滚动条
         self.scroll_state = ScrollbarState::new(self.tasks.len());
     }
+
     /// 保存番茄钟设置
     // TODO:
     fn save_pomodoro_settings(&mut self, duration_index: usize, custom_duration: String) {
@@ -591,6 +658,12 @@ impl App {
             WindowType::PomodoroSettings => WindowData::PomodoroSettings {
                 selected_duration: 2, // 默认25分钟
                 custom_duration: String::new(),
+                current_focus: 0,
+            },
+            WindowType::Settings => WindowData::Settings {
+                // 从配置文件或默认值加载设置
+                play_during_pomodoro: false, // 可以从配置读取
+                play_on_finish: false,       // 可以从配置读取
                 current_focus: 0,
             },
             _ => WindowData::Empty,
@@ -641,23 +714,79 @@ impl App {
         self.active_window = None;
     }
 
-    /// 根据窗口类型获取默认布局
+    /// 根据窗口类型获取动态布局
     fn get_window_layout(&self, window_type: &WindowType) -> WindowLayout {
-        // 这里可以根据屏幕大小动态计算，先使用固定值
+        // 尝试获取当前终端大小
+        let term_size = match terminal_size::terminal_size() {
+            Some((w, h)) => (w.0, h.0),
+            None => (120, 30), // 默认值
+        };
+
+        let (term_width, term_height) = term_size;
+
+        // // 所有窗口使用相同的动态策略：宽度80%，高度80%，居中
+        // let width = (term_width as f32 * 0.85) as u16; // 85% 宽度
+        // let height = (term_height as f32 * 0.85) as u16; // 85% 高度
+        // let x = (term_width - width) / 2;
+        // let y = (term_height - height) / 2;
+
+        // 可以根据窗口类型微调
         match window_type {
-            WindowType::CreateTask => WindowLayout {
-                x: 15,
-                y: 2,
-                width: 80,
-                height: 21,
-            },
-            // ... 其他窗口的默认布局
-            _ => WindowLayout {
-                x: 15,
-                y: 2,
-                width: 80,
-                height: 21,
-            },
+            WindowType::CreateTask => {
+                // 创建任务窗口可以稍微窄一点
+                let width = (term_width as f32 * 0.7) as u16;
+                let height = (term_height as f32 * 0.8) as u16;
+                let x = (term_width - width) / 2;
+                let y = (term_height - height) / 3; // 偏上一点
+                WindowLayout {
+                    x,
+                    y,
+                    width,
+                    height,
+                }
+            }
+
+            WindowType::PomodoroSettings => {
+                // 番茄钟设置窗口需要更宽
+                let width = (term_width as f32 * 0.8) as u16;
+                let height = (term_height as f32 * 0.85) as u16;
+                let x = (term_width - width) / 2;
+                let y = (term_height - height) / 2;
+                WindowLayout {
+                    x,
+                    y,
+                    width,
+                    height,
+                }
+            }
+
+            WindowType::Settings => {
+                // 设置窗口
+                let width = (term_width as f32 * 0.75) as u16;
+                let height = (term_height as f32 * 0.9) as u16;
+                let x = (term_width - width) / 2;
+                let y = (term_height - height) / 2;
+                WindowLayout {
+                    x,
+                    y,
+                    width,
+                    height,
+                }
+            }
+
+            _ => {
+                // 默认
+                let width = (term_width as f32 * 0.7) as u16;
+                let height = (term_height as f32 * 0.7) as u16;
+                let x = (term_width - width) / 2;
+                let y = (term_height - height) / 2;
+                WindowLayout {
+                    x,
+                    y,
+                    width,
+                    height,
+                }
+            }
         }
     }
 

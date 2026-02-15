@@ -2,7 +2,7 @@
 pub enum WindowType {
     CreateTask,
     PomodoroSettings,
-    Setting,
+    Settings,
     Search,
 }
 
@@ -38,6 +38,10 @@ pub enum WindowData {
     Search {
         query: String,
     },
-    Setting,
+    Settings {
+        play_during_pomodoro: bool,
+        play_on_finish: bool,
+        current_focus: usize,
+    },
     Empty,
 }

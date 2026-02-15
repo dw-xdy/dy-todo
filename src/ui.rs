@@ -363,6 +363,9 @@ fn draw_window(_app: &App, window: &ActiveWindow, frame: &mut Frame) {
         (WindowType::PomodoroSettings, _) => {
             draw_pomodoro_settings_window(_app, area, frame);
         }
+        (WindowType::Settings, _) => {
+            draw_setting_windows(_app, area, frame);
+        }
         _ => {}
     }
 }
@@ -436,7 +439,6 @@ fn draw_pomodoro_settings_window(_app: &App, area: Rect, frame: &mut Frame) {
     let up_areas = up_layout.split(rows[0]);
 
     // 下面就不切割了, 因为是音乐播放列表
-
     if let Some(window) = &_app.active_window
         && let WindowData::PomodoroSettings {
             selected_duration,
@@ -444,25 +446,25 @@ fn draw_pomodoro_settings_window(_app: &App, area: Rect, frame: &mut Frame) {
             current_focus,
         } = &window.data
     {
-        draw_selected_duration(
+        draw_commonly_used_pomodoro_time(
             _app,
             up_areas[0],
             *selected_duration,
             *current_focus == 2,
             frame,
         );
-        draw_middle_right(
+        draw_custom_pomodoro_time(
             _app,
             up_areas[1],
             custom_duration,
             *current_focus == 3,
             frame,
         );
-        draw_down(_app, rows[1], *current_focus == 4, frame);
+        draw_music_list(_app, rows[1], *current_focus == 4, frame);
     }
 }
 
-fn draw_selected_duration(
+fn draw_commonly_used_pomodoro_time(
     _app: &App,
     area: Rect,
     selected: usize,
@@ -494,7 +496,13 @@ fn draw_selected_duration(
     frame.render_widget(list, area);
 }
 
-fn draw_middle_right(_app: &App, area: Rect, custom: &str, is_active: bool, frame: &mut Frame) {
+fn draw_custom_pomodoro_time(
+    _app: &App,
+    area: Rect,
+    custom: &str,
+    is_active: bool,
+    frame: &mut Frame,
+) {
     let border_style = if is_active {
         Style::default().fg(TokyoNight::CYAN).bold()
     } else {
@@ -524,7 +532,7 @@ fn draw_middle_right(_app: &App, area: Rect, custom: &str, is_active: bool, fram
     frame.render_widget(paragraph, area);
 }
 
-fn draw_down(app: &App, area: Rect, is_active: bool, frame: &mut Frame) {
+fn draw_music_list(app: &App, area: Rect, is_active: bool, frame: &mut Frame) {
     let border_style = if is_active {
         Style::default().fg(TokyoNight::CYAN).bold()
     } else {
@@ -631,4 +639,266 @@ fn draw_down(app: &App, area: Rect, is_active: bool, frame: &mut Frame) {
             help_area,
         );
     }
+}
+
+/// 绘制设置界面
+fn draw_setting_windows(_app: &App, area: Rect, frame: &mut Frame) {
+    frame.render_widget(Clear, area);
+
+    let block = Block::bordered()
+        .title(Line::from(" ⚙️ Settings 设置 ").centered())
+        .border_set(border::THICK)
+        .border_style(Style::default().fg(TokyoNight::CYAN))
+        .bg(Color::Rgb(20, 20, 40));
+
+    let inner_area = block.inner(area);
+    frame.render_widget(block, area);
+
+    // 调整布局：上面两个设置选项，中间音乐列表，下面进度条
+    let layout = Layout::vertical([
+        Constraint::Percentage(15), // 番茄钟启动的时候是否需要播放音乐
+        Constraint::Percentage(15), // 番茄钟结束的时候是否需要播放音乐
+        Constraint::Percentage(50), // 音乐列表
+        Constraint::Percentage(20), // 进度条
+    ]);
+
+    let rows = layout.split(inner_area);
+
+    if let Some(window) = &_app.active_window
+        && let WindowData::Settings {
+            play_during_pomodoro,
+            play_on_finish,
+            current_focus,
+        } = &window.data
+    {
+        draw_play_during_pomodoro(
+            _app,
+            rows[0],
+            *play_during_pomodoro,
+            *current_focus == 0,
+            frame,
+        );
+
+        draw_play_on_finish(_app, rows[1], *play_on_finish, *current_focus == 1, frame);
+
+        // 音乐播放列表
+        draw_music_list_in_settings(_app, rows[2], *current_focus == 2, frame);
+
+        // 进度条
+        draw_progress_bar(rows[3], frame);
+    }
+}
+
+fn draw_play_during_pomodoro(
+    _app: &App,
+    area: Rect,
+    enabled: bool,
+    is_active: bool,
+    frame: &mut Frame,
+) {
+    let border_style = if is_active {
+        Style::default().fg(TokyoNight::CYAN).bold()
+    } else {
+        Style::default().fg(TokyoNight::RED)
+    };
+
+    let block = Block::bordered()
+        .title(Line::from(" 🎵 运行时播放音乐? ").centered())
+        .border_set(border::ROUNDED)
+        .border_style(border_style);
+
+    let status = if enabled { "✅ 是" } else { "❌ 否" };
+    let paragraph = Paragraph::new(status)
+        .block(block)
+        .alignment(ratatui::layout::Alignment::Center);
+
+    frame.render_widget(paragraph, area);
+}
+
+fn draw_play_on_finish(_app: &App, area: Rect, enabled: bool, is_active: bool, frame: &mut Frame) {
+    let border_style = if is_active {
+        Style::default().fg(TokyoNight::CYAN).bold()
+    } else {
+        Style::default().fg(TokyoNight::RED)
+    };
+
+    let block = Block::bordered()
+        .title(Line::from(" ⏹️ 结束时播放音乐? ").centered())
+        .border_set(border::ROUNDED)
+        .border_style(border_style);
+
+    let status = if enabled { "✅ 是" } else { "❌ 否" };
+    let paragraph = Paragraph::new(status)
+        .block(block)
+        .alignment(ratatui::layout::Alignment::Center);
+
+    frame.render_widget(paragraph, area);
+}
+
+/// 设置界面中的音乐播放列表
+fn draw_music_list_in_settings(app: &App, area: Rect, is_active: bool, frame: &mut Frame) {
+    let border_style = if is_active {
+        Style::default().fg(TokyoNight::CYAN).bold()
+    } else {
+        Style::default().fg(TokyoNight::GRAY)
+    };
+
+    let block = Block::bordered()
+        .title(Line::from(" 🎵 音乐播放列表 ").centered())
+        .border_set(border::ROUNDED)
+        .border_style(border_style);
+
+    // 显示播放状态提示
+    let help_text = if is_active {
+        Line::from(vec![
+            " ↑/k ↓/j ".fg(Color::Rgb(255, 200, 100)),
+            "选择  |  ".fg(Color::White),
+            "Enter ".fg(Color::Rgb(100, 255, 100)),
+            "播放  |  ".fg(Color::White),
+            "Space ".fg(Color::Rgb(100, 200, 255)),
+            "暂停/继续".fg(Color::White),
+        ])
+    } else {
+        Line::from("")
+    };
+
+    // 构建列表项，显示播放状态
+    let items: Vec<ListItem> = app
+        .music_files
+        .iter()
+        .enumerate()
+        .map(|(i, file)| {
+            let is_playing = app.music_player_state.current_playing_index == Some(i)
+                && app.music_player_state.playback_state == PlaybackState::Playing;
+            let is_paused = app.music_player_state.current_playing_index == Some(i)
+                && app.music_player_state.playback_state == PlaybackState::Paused;
+
+            let icon = if is_playing {
+                " ▶️ ".into()
+            } else if is_paused {
+                " ⏸️ ".into()
+            } else {
+                " 🎶 ".into()
+            };
+
+            ListItem::new(Line::from(vec![
+                icon,
+                file.name.clone().into(),
+                Span::raw("  "),
+                // 显示音量图标
+                if i == app
+                    .music_player_state
+                    .current_playing_index
+                    .unwrap_or(usize::MAX)
+                {
+                    format!("音量: {:.0}%", app.music_player_state.volume * 100.0).into()
+                } else {
+                    "".into()
+                },
+            ]))
+        })
+        .collect();
+
+    // 如果音乐文件为空，显示提示信息
+    let items = if items.is_empty() {
+        vec![ListItem::new(Line::from(vec![
+            " 📭 没有找到音乐文件，请按 'l' 加载音乐目录".into(),
+        ]))]
+    } else {
+        items
+    };
+
+    let list = List::new(items)
+        .block(block)
+        .highlight_style(
+            Style::default()
+                .bg(TokyoNight::GRAY)
+                .fg(Color::White)
+                .bold(),
+        )
+        .highlight_symbol("▶ ");
+
+    // 渲染列表
+    frame.render_stateful_widget(list, area, &mut app.music_list_state.clone());
+
+    // 渲染滚动条
+    let visible_height = area.height.saturating_sub(2) as usize;
+    if app.music_files.len() > visible_height {
+        let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
+            .track_symbol(Some("░"))
+            .thumb_symbol("█");
+
+        let mut music_scroll_state = app.music_scroll_state;
+
+        let scrollbar_area = Rect {
+            x: area.x + area.width - 2,
+            y: area.y + 1,
+            width: 1,
+            height: area.height - 2,
+        };
+
+        frame.render_stateful_widget(scrollbar, scrollbar_area, &mut music_scroll_state);
+    }
+
+    // 渲染帮助文本
+    if is_active && !app.music_files.is_empty() {
+        let help_area = Rect {
+            x: area.x,
+            y: area.y + area.height - 1,
+            width: area.width,
+            height: 1,
+        };
+        frame.render_widget(
+            Paragraph::new(help_text).alignment(ratatui::layout::Alignment::Center),
+            help_area,
+        );
+    }
+}
+
+/// 进度条组件 - 显示番茄钟进度
+fn draw_progress_bar(area: Rect, frame: &mut Frame) {
+    let block = Block::bordered()
+        .title(Line::from(" 📊 当前进度 ").centered())
+        .border_set(border::ROUNDED)
+        .border_style(Style::default().fg(TokyoNight::CYAN));
+
+    let inner_area = block.inner(area);
+    frame.render_widget(block, area);
+
+    // 这里可以传入实际的进度值（0.0 - 1.0）
+    let progress = 0.65; // 示例进度 65%
+
+    // 使用 ratatui 的 Gauge 组件
+    let gauge = ratatui::widgets::Gauge::default()
+        .block(Block::default())
+        .gauge_style(
+            Style::default()
+                .fg(TokyoNight::CYAN)
+                .bg(TokyoNight::GRAY)
+                .add_modifier(ratatui::style::Modifier::BOLD),
+        )
+        .percent((progress * 100.0) as u16)
+        .label(format!("{:.1}%", progress * 100.0))
+        .use_unicode(true); // 使用 Unicode 字符显示更平滑的进度条
+
+    frame.render_widget(gauge, inner_area);
+
+    // 添加一些额外的信息
+    let info_text = vec![
+        Line::from(vec!["当前番茄: ".into(), "25分钟".fg(Color::Green).bold()]),
+        Line::from(vec!["剩余时间: ".into(), "8:45".fg(Color::Yellow).bold()]),
+    ];
+
+    let info_area = Rect {
+        x: inner_area.x,
+        y: inner_area.y + 2,
+        width: inner_area.width,
+        height: 2,
+    };
+
+    let info_paragraph = Paragraph::new(info_text)
+        .alignment(ratatui::layout::Alignment::Center)
+        .block(Block::default());
+
+    frame.render_widget(info_paragraph, info_area);
 }
