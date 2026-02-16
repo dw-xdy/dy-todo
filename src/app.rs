@@ -348,16 +348,6 @@ impl App {
                     }
                     true
                 }
-                KeyCode::Char(' ') => {
-                    let text = if *current_field == 0 {
-                        title
-                    } else {
-                        description
-                    };
-                    text.insert(*cursor_position, ' ');
-                    *cursor_position += 1;
-                    true
-                }
                 _ => false,
             },
 
@@ -368,11 +358,11 @@ impl App {
             } => {
                 match key.code {
                     KeyCode::Tab => {
-                        *current_focus = (*current_focus + 1) % 5;
+                        *current_focus = (*current_focus + 1) % 3;
                         true
                     }
                     KeyCode::Enter => {
-                        if *current_focus == 4 {
+                        if *current_focus == 2 {
                             // 在音乐列表按Enter播放选中的音乐
                             self.play_selected_music();
                             true
@@ -390,50 +380,35 @@ impl App {
                         true
                     }
                     KeyCode::Char(' ') => {
-                        if *current_focus == 4 {
+                        if *current_focus == 2 {
                             // 在音乐列表按空格控制播放/暂停
                             self.toggle_playback();
                             true
                         } else {
-                            match *current_focus {
-                                _ => {}
-                            }
                             true
                         }
                     }
                     KeyCode::Up | KeyCode::Char('k') => {
-                        if *current_focus == 2 {
+                        if *current_focus == 0 {
                             // 常用时间选择
                             if *selected_duration > 0 {
                                 *selected_duration -= 1;
                             }
-                        } else if *current_focus == 4 {
+                        } else if *current_focus == 2 {
                             // 音乐列表向上移动
                             self.music_list_previous();
                         }
                         true
                     }
                     KeyCode::Down | KeyCode::Char('j') => {
-                        if *current_focus == 2 {
+                        if *current_focus == 0 {
                             // 常用时间选择
                             if *selected_duration < 4 {
                                 *selected_duration += 1;
                             }
-                        } else if *current_focus == 4 {
+                        } else if *current_focus == 2 {
                             // 音乐列表向下移动
                             self.music_list_next();
-                        }
-                        true
-                    }
-                    KeyCode::Char(c) => {
-                        if *current_focus == 3 && c.is_ascii_digit() {
-                            custom_duration.push(c);
-                        }
-                        true
-                    }
-                    KeyCode::Backspace => {
-                        if *current_focus == 3 {
-                            custom_duration.pop();
                         }
                         true
                     }

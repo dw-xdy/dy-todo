@@ -450,17 +450,17 @@ fn draw_pomodoro_settings_window(_app: &App, area: Rect, frame: &mut Frame) {
             _app,
             up_areas[0],
             *selected_duration,
-            *current_focus == 2,
+            *current_focus == 0,
             frame,
         );
         draw_custom_pomodoro_time(
             _app,
             up_areas[1],
             custom_duration,
-            *current_focus == 3,
+            *current_focus == 1,
             frame,
         );
-        draw_music_list(_app, rows[1], *current_focus == 4, frame);
+        draw_music_list(_app, rows[1], *current_focus == 2, frame);
     }
 }
 
