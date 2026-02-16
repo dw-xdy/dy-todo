@@ -213,8 +213,13 @@ impl App {
             let should_close = match key.code {
                 KeyCode::Esc => true, // Esc 总是取消并关闭
                 KeyCode::Enter => {
-                    // 只有非番茄钟设置窗口的 Enter 才关闭
-                    !matches!(window.window_type, WindowType::PomodoroSettings)
+                    // 只有特定窗口类型的 Enter 才关闭
+                    match window.window_type {
+                        WindowType::CreateTask => true,        // 创建任务窗口按 Enter 关闭
+                        WindowType::PomodoroSettings => false, // 番茄钟设置窗口不关闭
+                        WindowType::Settings => false,         // 设置窗口不关闭
+                        WindowType::Search => true,            // 搜索窗口按 Enter 关闭
+                    }
                 }
                 _ => false,
             };

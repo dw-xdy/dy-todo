@@ -654,12 +654,11 @@ fn draw_setting_windows(_app: &App, area: Rect, frame: &mut Frame) {
     let inner_area = block.inner(area);
     frame.render_widget(block, area);
 
-    // 调整布局：上面两个设置选项，中间音乐列表，下面进度条
+    // 调整布局：移除进度条，让音乐列表占据更多空间
     let layout = Layout::vertical([
         Constraint::Percentage(15), // 番茄钟启动的时候是否需要播放音乐
         Constraint::Percentage(15), // 番茄钟结束的时候是否需要播放音乐
-        Constraint::Percentage(50), // 音乐列表
-        Constraint::Percentage(20), // 进度条
+        Constraint::Percentage(70), // 音乐列表
     ]);
 
     let rows = layout.split(inner_area);
@@ -671,31 +670,15 @@ fn draw_setting_windows(_app: &App, area: Rect, frame: &mut Frame) {
             current_focus,
         } = &window.data
     {
-        draw_play_during_pomodoro(
-            _app,
-            rows[0],
-            *play_during_pomodoro,
-            *current_focus == 0,
-            frame,
-        );
+        draw_play_during_pomodoro(rows[0], *play_during_pomodoro, *current_focus == 0, frame);
 
-        draw_play_on_finish(_app, rows[1], *play_on_finish, *current_focus == 1, frame);
+        draw_play_on_finish(rows[1], *play_on_finish, *current_focus == 1, frame);
 
-        // 音乐播放列表
         draw_music_list_in_settings(_app, rows[2], *current_focus == 2, frame);
-
-        // 进度条
-        draw_progress_bar(rows[3], frame);
     }
 }
 
-fn draw_play_during_pomodoro(
-    _app: &App,
-    area: Rect,
-    enabled: bool,
-    is_active: bool,
-    frame: &mut Frame,
-) {
+fn draw_play_during_pomodoro(area: Rect, enabled: bool, is_active: bool, frame: &mut Frame) {
     let border_style = if is_active {
         Style::default().fg(TokyoNight::CYAN).bold()
     } else {
@@ -715,7 +698,7 @@ fn draw_play_during_pomodoro(
     frame.render_widget(paragraph, area);
 }
 
-fn draw_play_on_finish(_app: &App, area: Rect, enabled: bool, is_active: bool, frame: &mut Frame) {
+fn draw_play_on_finish(area: Rect, enabled: bool, is_active: bool, frame: &mut Frame) {
     let border_style = if is_active {
         Style::default().fg(TokyoNight::CYAN).bold()
     } else {
@@ -853,52 +836,4 @@ fn draw_music_list_in_settings(app: &App, area: Rect, is_active: bool, frame: &m
             help_area,
         );
     }
-}
-
-/// 进度条组件 - 显示番茄钟进度
-fn draw_progress_bar(area: Rect, frame: &mut Frame) {
-    let block = Block::bordered()
-        .title(Line::from(" 📊 当前进度 ").centered())
-        .border_set(border::ROUNDED)
-        .border_style(Style::default().fg(TokyoNight::CYAN));
-
-    let inner_area = block.inner(area);
-    frame.render_widget(block, area);
-
-    // 这里可以传入实际的进度值（0.0 - 1.0）
-    let progress = 0.65; // 示例进度 65%
-
-    // 使用 ratatui 的 Gauge 组件
-    let gauge = ratatui::widgets::Gauge::default()
-        .block(Block::default())
-        .gauge_style(
-            Style::default()
-                .fg(TokyoNight::CYAN)
-                .bg(TokyoNight::GRAY)
-                .add_modifier(ratatui::style::Modifier::BOLD),
-        )
-        .percent((progress * 100.0) as u16)
-        .label(format!("{:.1}%", progress * 100.0))
-        .use_unicode(true); // 使用 Unicode 字符显示更平滑的进度条
-
-    frame.render_widget(gauge, inner_area);
-
-    // 添加一些额外的信息
-    let info_text = vec![
-        Line::from(vec!["当前番茄: ".into(), "25分钟".fg(Color::Green).bold()]),
-        Line::from(vec!["剩余时间: ".into(), "8:45".fg(Color::Yellow).bold()]),
-    ];
-
-    let info_area = Rect {
-        x: inner_area.x,
-        y: inner_area.y + 2,
-        width: inner_area.width,
-        height: 2,
-    };
-
-    let info_paragraph = Paragraph::new(info_text)
-        .alignment(ratatui::layout::Alignment::Center)
-        .block(Block::default());
-
-    frame.render_widget(info_paragraph, info_area);
 }
