@@ -43,7 +43,7 @@ pub fn render(app: &App, frame: &mut Frame) {
 
 fn draw_search(_app: &App, area: Rect, frame: &mut Frame) {
     let block = Block::bordered()
-        .title(Line::from(" 🔍 Search ").centered())
+        .title(Line::from("🔍 Search ").centered())
         .border_style(Style::default().fg(TokyoNight::MAGENTA))
         .border_set(border::ROUNDED);
     frame.render_widget(Paragraph::new("输入标签搜索...").block(block), area);
@@ -57,7 +57,7 @@ fn draw_todo(app: &App, area: Rect, title: &str, is_active: bool, frame: &mut Fr
     };
 
     let block = Block::bordered()
-        .title(Line::from(" 📝 新的todo ").centered())
+        .title(Line::from("📝 新的todo ").centered())
         .border_set(border::ROUNDED)
         .border_style(border_style);
 
@@ -149,7 +149,7 @@ fn draw_desc(app: &App, area: Rect, description: &str, is_active: bool, frame: &
     };
 
     let block = Block::bordered()
-        .title(Line::from(" 📋 todo的详细信息 ").centered())
+        .title(Line::from("📋 todo的详细信息 ").centered())
         .border_set(border::ROUNDED)
         .border_style(border_style);
 
@@ -279,7 +279,7 @@ fn draw_todo_list(app: &App, area: Rect, frame: &mut Frame) {
     let list = List::new(items)
         .block(
             Block::bordered()
-                .title(Line::from(" 📝 Todo List ").centered())
+                .title(Line::from("📝 Todo List ").centered())
                 .border_set(border::ROUNDED),
         )
         .highlight_style(
@@ -313,7 +313,7 @@ fn draw_todo_list(app: &App, area: Rect, frame: &mut Frame) {
 
 fn draw_pomodoro(_app: &App, area: Rect, frame: &mut Frame) {
     let block = Block::bordered()
-        .title(Line::from(" 🍅 Pomodoro ").centered())
+        .title(Line::from("🍅 Pomodoro ").centered())
         .border_style(Style::default().fg(TokyoNight::RED))
         .border_set(border::ROUNDED);
 
@@ -325,7 +325,7 @@ fn draw_pomodoro(_app: &App, area: Rect, frame: &mut Frame) {
 
 fn draw_details(_app: &App, area: Rect, frame: &mut Frame) {
     let block = Block::bordered()
-        .title(Line::from(" ℹ️ Info ").centered())
+        .title(Line::from("ℹ️ Info ").centered())
         .border_style(Style::default().fg(TokyoNight::GRAY))
         .border_set(border::ROUNDED);
 
@@ -385,7 +385,7 @@ fn draw_create_task_window(
     frame.render_widget(clear_block, area);
 
     let block = Block::bordered()
-        .title(Line::from(" 🆕 创建一个新的todo ").centered())
+        .title(Line::from("🆕 创建一个新的todo ").centered())
         .border_style(Style::default().fg(TokyoNight::CYAN))
         .border_set(border::DOUBLE)
         .bg(Color::Rgb(20, 20, 40)); // 深色背景
@@ -410,7 +410,7 @@ fn draw_create_task_window(
 
 fn draw_tag(_app: &App, area: Rect, frame: &mut Frame) {
     let block = Block::bordered()
-        .title(Line::from(" 自定义标签 ").centered())
+        .title(Line::from("自定义标签 ").centered())
         .border_set(border::ROUNDED)
         .border_style(Style::default().fg(TokyoNight::ORANGE));
 
@@ -421,7 +421,7 @@ fn draw_pomodoro_settings_window(_app: &App, area: Rect, frame: &mut Frame) {
     frame.render_widget(Clear, area);
 
     let block = Block::bordered()
-        .title(Line::from(" 🍅 Pomodoro设置 ").centered())
+        .title(Line::from("🍅 Pomodoro设置 ").centered())
         .border_style(Style::default().fg(TokyoNight::GRAY))
         .border_set(border::THICK)
         .bg(Color::Rgb(20, 20, 40)); // 深色背景
@@ -478,7 +478,7 @@ fn draw_commonly_used_pomodoro_time(
     };
 
     let block = Block::bordered()
-        .title(Line::from(" ⏱️ 常用番茄钟时间 ").centered())
+        .title(Line::from("⏱️ 常用番茄钟时间 ").centered())
         .border_set(border::ROUNDED)
         .border_style(border_style);
 
@@ -510,7 +510,7 @@ fn draw_custom_pomodoro_time(
     };
 
     let block = Block::bordered()
-        .title(Line::from(" ✏️ 自定义时间(分钟) ").centered())
+        .title(Line::from("✏️ 自定义时间(分钟) ").centered())
         .border_set(border::ROUNDED)
         .border_style(border_style);
 
@@ -540,7 +540,7 @@ fn draw_music_list(app: &App, area: Rect, is_active: bool, frame: &mut Frame) {
     };
 
     let block = Block::bordered()
-        .title(Line::from(" 🎵 音乐播放列表 ").centered())
+        .title(Line::from("🎵 音乐播放列表 ").centered())
         .border_set(border::ROUNDED)
         .border_style(border_style);
 
@@ -646,7 +646,7 @@ fn draw_setting_windows(_app: &App, area: Rect, frame: &mut Frame) {
     frame.render_widget(Clear, area);
 
     let block = Block::bordered()
-        .title(Line::from(" ⚙️ Settings 设置 ").centered())
+        .title(Line::from("⚙️ Settings 设置 "))
         .border_set(border::THICK)
         .border_style(Style::default().fg(TokyoNight::CYAN))
         .bg(Color::Rgb(20, 20, 40));
@@ -654,11 +654,10 @@ fn draw_setting_windows(_app: &App, area: Rect, frame: &mut Frame) {
     let inner_area = block.inner(area);
     frame.render_widget(block, area);
 
-    // 调整布局：移除进度条，让音乐列表占据更多空间
     let layout = Layout::vertical([
-        Constraint::Percentage(15), // 番茄钟启动的时候是否需要播放音乐
-        Constraint::Percentage(15), // 番茄钟结束的时候是否需要播放音乐
-        Constraint::Percentage(70), // 音乐列表
+        Constraint::Percentage(20), // 番茄钟启动的时候是否需要播放音乐
+        Constraint::Percentage(20), // 番茄钟结束的时候是否需要播放音乐
+        Constraint::Percentage(60), // 音乐列表
     ]);
 
     let rows = layout.split(inner_area);
@@ -686,7 +685,7 @@ fn draw_play_during_pomodoro(area: Rect, enabled: bool, is_active: bool, frame: 
     };
 
     let block = Block::bordered()
-        .title(Line::from(" 🎵 运行时播放音乐? ").centered())
+        .title(Line::from("🎵 运行时播放音乐? ").centered())
         .border_set(border::ROUNDED)
         .border_style(border_style);
 
@@ -706,7 +705,7 @@ fn draw_play_on_finish(area: Rect, enabled: bool, is_active: bool, frame: &mut F
     };
 
     let block = Block::bordered()
-        .title(Line::from(" ⏹️ 结束时播放音乐? ").centered())
+        .title(Line::from("⏹️ 结束时播放音乐? ").centered())
         .border_set(border::ROUNDED)
         .border_style(border_style);
 
@@ -727,7 +726,7 @@ fn draw_music_list_in_settings(app: &App, area: Rect, is_active: bool, frame: &m
     };
 
     let block = Block::bordered()
-        .title(Line::from(" 🎵 音乐播放列表 ").centered())
+        .title(Line::from("🎵 音乐播放列表 ").centered())
         .border_set(border::ROUNDED)
         .border_style(border_style);
 

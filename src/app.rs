@@ -523,7 +523,7 @@ impl App {
         self.music_scroll_state = self.music_scroll_state.position(i); // 更新滚动条
     }
 
-    // 新增：播放选中的音乐
+    // 播放选中的音乐
     pub fn play_selected_music(&mut self) {
         if let Some(selected) = self.music_list_state.selected()
             && selected < self.music_files.len()
@@ -703,12 +703,6 @@ impl App {
         };
 
         let (term_width, term_height) = term_size;
-
-        // // 所有窗口使用相同的动态策略：宽度80%，高度80%，居中
-        // let width = (term_width as f32 * 0.85) as u16; // 85% 宽度
-        // let height = (term_height as f32 * 0.85) as u16; // 85% 高度
-        // let x = (term_width - width) / 2;
-        // let y = (term_height - height) / 2;
 
         // 可以根据窗口类型微调
         match window_type {
