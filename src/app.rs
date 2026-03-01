@@ -50,6 +50,7 @@ use crate::models::{
 };
 
 pub struct App {
+    // 是否退出
     pub exit: bool,
     pub show_dashboard: bool, // 新增：控制是否显示启动界面
     pub tasks: Vec<TodoTask>,
@@ -537,7 +538,7 @@ impl App {
             self.music_player_state.current_playing_index = Some(selected);
             self.music_player_state.playback_state = PlaybackState::Playing;
 
-            // 在新线程中播放音乐
+            // 在新线程中播放音乐, 可以从配置文件中的路径读取
             let path = file_path.clone();
             let volume = self.music_player_state.volume;
 
