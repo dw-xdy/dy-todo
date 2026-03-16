@@ -91,6 +91,7 @@ const DIGITS: [&[&str; 5]; 10] = [
     ],
 ];
 
+// 数字中间的冒号 :
 const COLON: &[&str; 5] = &[
     "    ",
     " ██ ",
@@ -199,27 +200,26 @@ fn main() -> std::io::Result<()> {
 
         if event::poll(Duration::from_millis(100))?
             && let Event::Key(key) = event::read()?
+            && key.kind == event::KeyEventKind::Press
         {
-            if key.kind == event::KeyEventKind::Press {
-                // 只处理按下
-                match key.code {
-                    KeyCode::Char(' ') => {
-                        timer_state = match timer_state {
-                            TimerState::Stopped => TimerState::Running(Instant::now()),
-                            TimerState::Running(start) => TimerState::Paused(start.elapsed()),
-                            TimerState::Paused(elapsed) => {
-                                TimerState::Running(Instant::now() - elapsed)
-                            }
-                        };
-                        last_remaining_secs = u64::MAX; // 强制重绘
-                    }
-                    KeyCode::Char('r') => {
-                        timer_state = TimerState::Stopped;
-                        last_remaining_secs = u64::MAX;
-                    }
-                    KeyCode::Char('q') => break,
-                    _ => {}
+            // 处理按键
+            match key.code {
+                KeyCode::Char(' ') => {
+                    timer_state = match timer_state {
+                        TimerState::Stopped => TimerState::Running(Instant::now()),
+                        TimerState::Running(start) => TimerState::Paused(start.elapsed()),
+                        TimerState::Paused(elapsed) => {
+                            TimerState::Running(Instant::now() - elapsed)
+                        }
+                    };
+                    last_remaining_secs = u64::MAX; // 强制重绘
                 }
+                KeyCode::Char('r') => {
+                    timer_state = TimerState::Stopped;
+                    last_remaining_secs = u64::MAX;
+                }
+                KeyCode::Char('q') => break,
+                _ => {}
             }
         }
     }
