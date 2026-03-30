@@ -3,7 +3,7 @@ use crate::dashboard::Dashboard;
 use crate::models::{ActiveWindow, PlaybackState, TaskStatus, TokyoNight, WindowData, WindowType};
 use ratatui::{
     Frame,
-    layout::{Constraint, Layout, Position, Rect},
+    layout::{Alignment, Constraint, Layout, Margin, Position, Rect},
     style::{Color, Style, Stylize},
     symbols::border,
     text::{Line, Span},
@@ -302,7 +302,7 @@ fn draw_todo_list(app: &App, area: Rect, frame: &mut Frame) {
 
         frame.render_stateful_widget(
             scrollbar,
-            area.inner(ratatui::layout::Margin {
+            area.inner(Margin {
                 vertical: 1,
                 horizontal: 0,
             }),
@@ -319,7 +319,7 @@ fn draw_pomodoro(_app: &App, area: Rect, frame: &mut Frame) {
 
     let paragraph = Paragraph::new("番茄钟")
         .block(block)
-        .alignment(ratatui::layout::Alignment::Center);
+        .alignment(Alignment::Center);
     frame.render_widget(paragraph, area);
 }
 
@@ -522,7 +522,7 @@ fn draw_custom_pomodoro_time(
 
     let paragraph = Paragraph::new(display_text)
         .block(block)
-        .alignment(ratatui::layout::Alignment::Center)
+        .alignment(Alignment::Center)
         .style(if is_active {
             Style::default().fg(Color::White).bg(TokyoNight::GRAY)
         } else {
@@ -635,7 +635,7 @@ fn draw_music_list(app: &App, area: Rect, is_active: bool, frame: &mut Frame) {
             height: 1,
         };
         frame.render_widget(
-            Paragraph::new(help_text).alignment(ratatui::layout::Alignment::Center),
+            Paragraph::new(help_text).alignment(Alignment::Center),
             help_area,
         );
     }
@@ -692,7 +692,7 @@ fn draw_play_during_pomodoro(area: Rect, enabled: bool, is_active: bool, frame: 
     let status = if enabled { "✅ 是" } else { "❌ 否" };
     let paragraph = Paragraph::new(status)
         .block(block)
-        .alignment(ratatui::layout::Alignment::Center);
+        .alignment(Alignment::Center);
 
     frame.render_widget(paragraph, area);
 }
@@ -712,7 +712,7 @@ fn draw_play_on_finish(area: Rect, enabled: bool, is_active: bool, frame: &mut F
     let status = if enabled { "✅ 是" } else { "❌ 否" };
     let paragraph = Paragraph::new(status)
         .block(block)
-        .alignment(ratatui::layout::Alignment::Center);
+        .alignment(Alignment::Center);
 
     frame.render_widget(paragraph, area);
 }
@@ -831,7 +831,7 @@ fn draw_music_list_in_settings(app: &App, area: Rect, is_active: bool, frame: &m
             height: 1,
         };
         frame.render_widget(
-            Paragraph::new(help_text).alignment(ratatui::layout::Alignment::Center),
+            Paragraph::new(help_text).alignment(Alignment::Center),
             help_area,
         );
     }
